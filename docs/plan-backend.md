@@ -24,12 +24,12 @@ com.geosoa.backend
 
 **Objetivo:** dejar el proyecto listo para desarrollar y conectado a MySQL.
 
-- [ ] Agregar dependencias: `spring-boot-starter-validation`, `spring-boot-starter-data-jpa`, `mysql-connector-j`, `spring-boot-starter-cache`, `caffeine`, `spring-boot-starter-actuator`, `flyway-mysql`.
-- [ ] Configurar `application.properties` y perfiles `dev` y `test`.
-- [ ] Conectar con el MySQL de `compose.yaml` (`geosoa`, `soauser`).
-- [ ] Crear la estructura de paquetes.
-- [ ] Configurar CORS para el frontend.
-- [ ] Habilitar `/actuator/health`.
+- [x] Agregar dependencias: `spring-boot-starter-validation`, `spring-boot-starter-data-jpa`, `mysql-connector-j`, `spring-boot-starter-cache`, `caffeine`, `spring-boot-starter-actuator`, `flyway-mysql`.
+- [x] Configurar `application.properties` y perfiles `dev` y `test`.
+- [x] Conectar con el MySQL de `compose.yaml` (`geosoa`, `soauser`).
+- [x] Crear la estructura de paquetes.
+- [x] Configurar CORS para el frontend.
+- [x] Habilitar `/actuator/health`.
 
 **Entregable:** la aplicación arranca, conecta a MySQL y responde en `/actuator/health`.
 
