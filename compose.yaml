@@ -1,0 +1,17 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: geosoa-mysql
+    restart: "no"
+    environment:
+      MYSQL_DATABASE: geosoa
+      MYSQL_USER: soauser
+      MYSQL_PASSWORD: soapass
+      MYSQL_ROOT_PASSWORD: soapass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+volumes:
+  mysql-data:
