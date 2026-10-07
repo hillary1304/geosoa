@@ -74,7 +74,7 @@ com.geosoa.backend
 **Objetivo:** identificar el distrito y la población de una coordenada (OGC WFS).
 
 - [x] Verificar los atributos de `ig_distrito` e `ig_pobtotal_dist` con `DescribeFeatureType`.
-- [ ] Consulta del distrito por punto (Ubigeo, departamento, provincia, distrito).
+- [x] Consulta del distrito por punto (Ubigeo, departamento, provincia, distrito).
 - [ ] Consulta de población y densidad por Ubigeo.
 - [ ] Consulta de distritos dentro de un radio (bbox + filtro por distancia).
 - [ ] Persistir los límites distritales en MySQL como respaldo, porque el servicio presenta caídas.
