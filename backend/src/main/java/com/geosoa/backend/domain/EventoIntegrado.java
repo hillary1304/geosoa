@@ -7,6 +7,8 @@ public record EventoIntegrado(
 		Distrito distrito,
 		Precipitacion precipitacion,
 		Poblacion poblacion,
+		double radioAfectacionKm,
+		Long poblacionExpuesta,
 		Set<Fuente> fuentesFaltantes) {
 
 	public EventoIntegrado {

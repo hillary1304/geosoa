@@ -86,12 +86,12 @@ com.geosoa.backend
 
 **Objetivo:** combinar las tres fuentes en una vista integrada del evento.
 
-- [ ] `OrquestadorService` que, dado un sismo, consulte en paralelo a SENAMHI e INEI.
-- [ ] Calcular el radio de afectación según magnitud y profundidad.
-- [ ] Estimar la población expuesta sumando los distritos dentro del radio.
-- [ ] Construir `EventoIntegrado` con el sismo, el distrito, la precipitación y la población.
-- [ ] Respuesta parcial cuando una fuente no responde, indicando qué fuente faltó.
-- [ ] Pruebas unitarias del orquestador.
+- [x] `OrquestadorService` que, dado un sismo, consulte en paralelo a SENAMHI e INEI.
+- [x] Calcular el radio de afectación según magnitud y profundidad.
+- [x] Estimar la población expuesta sumando los distritos dentro del radio.
+- [x] Construir `EventoIntegrado` con el sismo, el distrito, la precipitación y la población.
+- [x] Respuesta parcial cuando una fuente no responde, indicando qué fuente faltó.
+- [x] Pruebas unitarias del orquestador.
 
 **Entregable:** un evento integrado completo a partir de un sismo del IGP.
 
