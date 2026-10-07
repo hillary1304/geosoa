@@ -4,9 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 import static org.hamcrest.Matchers.startsWith;
-import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -212,16 +214,15 @@ class IneiAdapterTests {
 	}
 
 	@Test
-	@SuppressWarnings("unchecked")
 	void guardaLosDistritosConsultadosComoRespaldo() {
 		server.expect(requestTo(startsWith(URL_BASE + "/ows")))
 			.andRespond(withSuccess(DISTRITO_CON_LIMITES, MediaType.APPLICATION_JSON));
 
 		adapter.distrito(-12.05, -77.03);
 
-		ArgumentCaptor<List<DistritoEntity>> guardados = ArgumentCaptor.forClass(List.class);
-		verify(repository).saveAll(guardados.capture());
-		DistritoEntity guardado = guardados.getValue().getFirst();
+		ArgumentCaptor<DistritoEntity> guardados = ArgumentCaptor.forClass(DistritoEntity.class);
+		verify(repository).save(guardados.capture());
+		DistritoEntity guardado = guardados.getValue();
 		assertThat(guardado.toDistrito()).isEqualTo(new Distrito("150101", "Lima", "Lima", "Lima"));
 		assertThat(guardado.toPoblacion()).hasValueSatisfying(p -> assertThat(p.total()).isEqualTo(273_142));
 		assertThat(guardado.getLimites()).isEqualTo(
@@ -238,16 +239,27 @@ class IneiAdapterTests {
 
 		adapter.distrito(-12.05, -77.03);
 
-		verify(repository, never()).saveAll(anyList());
+		verify(repository, never()).save(any());
 	}
 
 	@Test
 	void respondeAunqueFalleElRespaldo() {
-		when(repository.saveAll(anyList())).thenThrow(new DataAccessResourceFailureException("MySQL caído"));
+		when(repository.save(any())).thenThrow(new DataAccessResourceFailureException("MySQL caído"));
 		server.expect(requestTo(startsWith(URL_BASE + "/ows")))
 			.andRespond(withSuccess(DISTRITO_CON_LIMITES, MediaType.APPLICATION_JSON));
 
 		assertThat(adapter.distrito(-12.05, -77.03)).contains(new Distrito("150101", "Lima", "Lima", "Lima"));
+	}
+
+	@Test
+	void reintentaSiOtraConsultaGuardoElMismoDistrito() {
+		when(repository.save(any())).thenThrow(new DataIntegrityViolationException("Duplicate entry '150101'"))
+			.thenAnswer(invocacion -> invocacion.getArgument(0));
+		server.expect(requestTo(startsWith(URL_BASE + "/ows")))
+			.andRespond(withSuccess(DISTRITO_CON_LIMITES, MediaType.APPLICATION_JSON));
+
+		assertThat(adapter.distrito(-12.05, -77.03)).isPresent();
+		verify(repository, times(2)).save(any());
 	}
 
 	@Test

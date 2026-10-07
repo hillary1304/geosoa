@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -106,14 +107,21 @@ public class IneiAdapter {
 			.filter(f -> f.geometry() != null && !f.geometry().coordinates().isEmpty())
 			.map(IneiAdapter::toEntity)
 			.toList();
-		if (distritos.isEmpty()) {
-			return;
-		}
 		try {
-			distritoRepository.saveAll(distritos);
+			distritos.forEach(this::guardar);
 		}
 		catch (DataAccessException ex) {
 			log.warn("No se pudo guardar el respaldo de distritos del INEI", ex);
+		}
+	}
+
+	// Las consultas en paralelo pueden insertar el mismo distrito a la vez; al reintentar, la fila ya existe y se actualiza.
+	private void guardar(DistritoEntity distrito) {
+		try {
+			distritoRepository.save(distrito);
+		}
+		catch (DataIntegrityViolationException ex) {
+			distritoRepository.save(distrito);
 		}
 	}
 
