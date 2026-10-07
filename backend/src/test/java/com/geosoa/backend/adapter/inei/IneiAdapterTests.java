@@ -2,6 +2,7 @@ package com.geosoa.backend.adapter.inei;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam;
@@ -11,6 +12,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +27,7 @@ import org.springframework.web.util.UriUtils;
 
 import com.geosoa.backend.domain.Distrito;
 import com.geosoa.backend.domain.Fuente;
+import com.geosoa.backend.domain.Poblacion;
 import com.geosoa.backend.shared.FuenteNoDisponibleException;
 
 class IneiAdapterTests {
@@ -80,6 +83,67 @@ class IneiAdapterTests {
 					""", MediaType.APPLICATION_JSON));
 
 		assertThat(adapter.distrito(-12.05, -77.03)).isEmpty();
+	}
+
+	@Test
+	void obtieneLaPoblacionYDensidadDeUnUbigeo() {
+		server.expect(requestTo(startsWith(URL_BASE + "/ows")))
+			.andExpect(parametro("propertyName", "ubigeo,pobtotal,geom"))
+			.andExpect(parametro("CQL_FILTER", "ubigeo='150101'"))
+			.andRespond(withSuccess("""
+					{"type": "FeatureCollection", "features": [{"type": "Feature", "id": "ig_pobtotal_dist.1290",
+						"geometry": {"type": "MultiPolygon", "coordinates": [[[
+							[-77.05, -12.07], [-77.0, -12.07], [-77.0, -12.02], [-77.05, -12.02], [-77.05, -12.07]
+						]]]},
+						"properties": {"ubigeo": "150101", "pobtotal": 273142}}]}
+					""", MediaType.APPLICATION_JSON));
+
+		Poblacion poblacion = adapter.poblacion("150101").orElseThrow();
+
+		assertThat(poblacion.ubigeo()).isEqualTo("150101");
+		assertThat(poblacion.total()).isEqualTo(273_142);
+		assertThat(poblacion.densidadHabKm2()).isCloseTo(9_036, within(10.0));
+		server.verify();
+	}
+
+	@Test
+	void poblacionSinGeometriaNoTieneDensidad() {
+		server.expect(requestTo(startsWith(URL_BASE + "/ows")))
+			.andRespond(withSuccess("""
+					{"features": [{"geometry": null, "properties": {"ubigeo": "040402", "pobtotal": 1102.0}}]}
+					""", MediaType.APPLICATION_JSON));
+
+		assertThat(adapter.poblacion("040402")).contains(new Poblacion("040402", 1_102, null));
+	}
+
+	@Test
+	void devuelveVacioSiElUbigeoNoExiste() {
+		server.expect(requestTo(startsWith(URL_BASE + "/ows")))
+			.andRespond(withSuccess("""
+					{"type": "FeatureCollection", "totalFeatures": 0, "features": []}
+					""", MediaType.APPLICATION_JSON));
+
+		assertThat(adapter.poblacion("999999")).isEmpty();
+	}
+
+	@Test
+	void rechazaUbigeoInvalido() {
+		assertThatThrownBy(() -> adapter.poblacion("15010' OR '1'='1"))
+			.isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> adapter.poblacion(null))
+			.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	void calculaElAreaDescontandoLosHuecos() {
+		Multipoligono cuadrado = new Multipoligono(List.of(List.of(
+				List.of(List.of(0.0, 0.0), List.of(1.0, 0.0), List.of(1.0, 1.0), List.of(0.0, 1.0), List.of(0.0, 0.0)))));
+		Multipoligono conHueco = new Multipoligono(List.of(List.of(
+				List.of(List.of(0.0, 0.0), List.of(1.0, 0.0), List.of(1.0, 1.0), List.of(0.0, 1.0), List.of(0.0, 0.0)),
+				List.of(List.of(0.0, 0.0), List.of(0.5, 0.0), List.of(0.5, 1.0), List.of(0.0, 1.0), List.of(0.0, 0.0)))));
+
+		assertThat(cuadrado.areaKm2()).isCloseTo(12_363, within(5.0));
+		assertThat(conHueco.areaKm2()).isCloseTo(cuadrado.areaKm2() / 2, within(1.0));
 	}
 
 	@Test

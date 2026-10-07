@@ -12,11 +12,11 @@ record RespuestaWfs(List<Feature> features) {
 	}
 
 	@JsonIgnoreProperties(ignoreUnknown = true)
-	record Feature(Propiedades properties) {
+	record Feature(Multipoligono geometry, Propiedades properties) {
 	}
 
 	@JsonIgnoreProperties(ignoreUnknown = true)
-	record Propiedades(String ubigeo, String nombdep, String nombprov, String nombdist) {
+	record Propiedades(String ubigeo, String nombdep, String nombprov, String nombdist, Double pobtotal) {
 
 		boolean completas() {
 			return ubigeo != null && nombdep != null && nombprov != null && nombdist != null;

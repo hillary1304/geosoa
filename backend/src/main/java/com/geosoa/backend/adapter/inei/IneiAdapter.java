@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
@@ -12,6 +13,7 @@ import org.springframework.web.client.RestClientException;
 
 import com.geosoa.backend.domain.Distrito;
 import com.geosoa.backend.domain.Fuente;
+import com.geosoa.backend.domain.Poblacion;
 import com.geosoa.backend.shared.FuenteNoDisponibleException;
 
 @Component
@@ -19,7 +21,11 @@ public class IneiAdapter {
 
 	static final String CAPA_DISTRITOS = "Interoperabilidad:ig_pobtotal_dist";
 
-	private static final String ATRIBUTOS = "ubigeo,nombdep,nombprov,nombdist";
+	private static final String ATRIBUTOS_DISTRITO = "ubigeo,nombdep,nombprov,nombdist";
+
+	private static final String ATRIBUTOS_POBLACION = "ubigeo,pobtotal,geom";
+
+	private static final Pattern UBIGEO = Pattern.compile("\\d{6}");
 
 	private final RestClient restClient;
 
@@ -30,19 +36,35 @@ public class IneiAdapter {
 	// Vacío cuando el punto no pertenece a ningún distrito, por ejemplo en el mar.
 	public Optional<Distrito> distrito(double latitud, double longitud) {
 		validarCoordenadas(latitud, longitud);
-		return distritos("INTERSECTS(geom," + punto(latitud, longitud) + ")").stream().findFirst();
-	}
-
-	private List<Distrito> distritos(String filtro) {
-		return consultar(filtro).features().stream()
+		return consultar("INTERSECTS(geom," + punto(latitud, longitud) + ")", ATRIBUTOS_DISTRITO).features().stream()
 			.map(RespuestaWfs.Feature::properties)
 			.filter(Objects::nonNull)
 			.filter(RespuestaWfs.Propiedades::completas)
 			.map(p -> new Distrito(p.ubigeo(), p.nombdep(), p.nombprov(), p.nombdist()))
-			.toList();
+			.findFirst();
 	}
 
-	private RespuestaWfs consultar(String filtro) {
+	public Optional<Poblacion> poblacion(String ubigeo) {
+		if (ubigeo == null || !UBIGEO.matcher(ubigeo).matches()) {
+			throw new IllegalArgumentException("Ubigeo inválido: " + ubigeo);
+		}
+		return consultar("ubigeo='" + ubigeo + "'", ATRIBUTOS_POBLACION).features().stream()
+			.filter(f -> f.properties() != null && f.properties().pobtotal() != null)
+			.map(IneiAdapter::toPoblacion)
+			.findFirst();
+	}
+
+	static Poblacion toPoblacion(RespuestaWfs.Feature feature) {
+		long total = Math.round(feature.properties().pobtotal());
+		return new Poblacion(feature.properties().ubigeo(), total, densidad(total, feature.geometry()));
+	}
+
+	private static Double densidad(long total, Multipoligono geometria) {
+		double area = geometria == null ? 0 : geometria.areaKm2();
+		return area > 0 ? Math.round(total / area * 10) / 10.0 : null;
+	}
+
+	private RespuestaWfs consultar(String filtro, String atributos) {
 		RespuestaWfs respuesta;
 		try {
 			// GeoServer informa los errores como XML con HTTP 200, lo que aquí falla al leerlos como JSON.
@@ -53,7 +75,7 @@ public class IneiAdapter {
 					.queryParam("request", "GetFeature")
 					.queryParam("typeName", "{typeName}")
 					.queryParam("outputFormat", "{formato}")
-					.queryParam("propertyName", ATRIBUTOS)
+					.queryParam("propertyName", atributos)
 					.queryParam("CQL_FILTER", "{filtro}")
 					.build(CAPA_DISTRITOS, "application/json", filtro))
 				.retrieve()
