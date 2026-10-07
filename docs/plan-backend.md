@@ -37,10 +37,10 @@ com.geosoa.backend
 
 **Objetivo:** definir el formato común de datos y su almacenamiento.
 
-- [ ] Modelos de dominio: `Sismo`, `Precipitacion`, `Distrito`, `Poblacion`, `EventoIntegrado`.
-- [ ] Entidades JPA y repositorios para sismos y distritos.
-- [ ] Migraciones Flyway iniciales.
-- [ ] Manejo global de errores con `@RestControllerAdvice` y formato de error uniforme.
+- [x] Modelos de dominio: `Sismo`, `Precipitacion`, `Distrito`, `Poblacion`, `EventoIntegrado`.
+- [x] Entidades JPA y repositorios para sismos y distritos.
+- [x] Migraciones Flyway iniciales.
+- [x] Manejo global de errores con `@RestControllerAdvice` y formato de error uniforme.
 
 **Entregable:** esquema creado automáticamente al arrancar y pruebas de repositorio en verde.
 
