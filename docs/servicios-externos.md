@@ -2,11 +2,11 @@
 
 Endpoints y parámetros de los servicios públicos que consume GeoSOA. Cada servicio tiene un adaptador dedicado en el backend.
 
-| Entidad | Tecnología | Uso en el sistema | Estado verificado (2026-10-05) |
+| Entidad | Tecnología | Uso en el sistema | Estado verificado |
 |---|---|---|---|
-| IGP | ArcGIS REST (MapServer) | Eventos sísmicos | Disponible |
-| SENAMHI | OGC WFS (GeoServer) | Precipitación en la zona del evento | Disponible |
-| INEI | OGC WFS / WMS (GeoServer) | Límites distritales y población | No disponible (HTTP 503) |
+| IGP | ArcGIS REST (MapServer) | Eventos sísmicos | Disponible (2026-10-05) |
+| SENAMHI | OGC WFS (GeoServer) | Precipitación en la zona del evento | Disponible (2026-10-05) |
+| INEI | OGC WFS / WMS (GeoServer) | Límites distritales y población | Disponible con caídas intermitentes (2026-10-07) |
 
 ---
 
@@ -245,7 +245,7 @@ Las capas de monitoreo y pronóstico se renuevan periódicamente; obtener sus `t
 - **WMS:** `GET https://geoespacial.inei.gob.pe/geoserver/Interoperabilidad/wms`
 - **Sistema de referencia:** EPSG:4326
 
-> El 2026-10-05 el servidor respondía `HTTP 503 Server-unavailable!`. Las capas se tomaron del catálogo oficial del portal; los atributos deben confirmarse con `DescribeFeatureType` cuando el servicio esté disponible.
+> El 2026-10-05 el servidor respondía `HTTP 503 Server-unavailable!`; el 2026-10-07 volvió a responder y los atributos se verificaron con `DescribeFeatureType`. Por esas caídas, el backend guarda en MySQL los distritos consultados como respaldo.
 
 ### 3.1 Capas a utilizar
 
@@ -269,8 +269,8 @@ Las capas de monitoreo y pronóstico se renuevan periódicamente; obtener sus `t
 | `typeName` | Sí | `Interoperabilidad:ig_distrito` | Capa a consultar |
 | `outputFormat` | No | `application/json` | También GML |
 | `maxFeatures` | No | `50` | Límite de resultados |
-| `propertyName` | No | — | Atributos a devolver (pendiente de verificar) |
-| `CQL_FILTER` | No | `INTERSECTS(<geom>,POINT(-72.74 -16.19))` | Filtro espacial; nombre de geometría pendiente de verificar |
+| `propertyName` | No | `ubigeo,nombdep,nombprov,nombdist,pobtotal,geom` | Atributos a devolver |
+| `CQL_FILTER` | No | `INTERSECTS(geom,POINT(-72.74 -16.19))` | Filtro CQL (orden `lon lat`) |
 | `bbox` | No | `-72.8,-16.3,-72.6,-16.1` | Filtro por rectángulo |
 
 **Ejemplos:**
@@ -281,9 +281,44 @@ https://geoespacial.inei.gob.pe/geoserver/Interoperabilidad/ows?service=WFS&vers
 
 # Atributos de la capa
 https://geoespacial.inei.gob.pe/geoserver/Interoperabilidad/ows?service=WFS&version=1.0.0&request=DescribeFeatureType&typeName=Interoperabilidad:ig_pobtotal_dist
+
+# Distrito y población en un punto
+https://geoespacial.inei.gob.pe/geoserver/Interoperabilidad/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=Interoperabilidad:ig_pobtotal_dist&outputFormat=application/json&propertyName=ubigeo,nombdep,nombprov,nombdist,pobtotal&CQL_FILTER=INTERSECTS(geom,POINT(-77.03%20-12.05))
+
+# Distritos a 20 km de un punto
+...&CQL_FILTER=BBOX(geom,-72.93,-16.37,-72.55,-16.01)%20AND%20DWITHIN(geom,POINT(-72.74%20-16.19),20,kilometers)
 ```
 
-**Atributos esperados según el informe** (pendientes de confirmar): código de Ubigeo, nombre de departamento, provincia y distrito, población total censada y densidad poblacional (hab/km²).
+**Atributos verificados (2026-10-07):**
+
+| Capa | Atributos |
+|---|---|
+| `ig_distrito` | `geom` (MultiPolygon), `fid`, `objectid`, `ccdd`, `ccpp`, `ccdi`, `ubigeo`, `nombdist`, `fuente`, `periodo`, `ccdd_c`, `ccpp_c`, `ccdi_c`, `fec_reg` |
+| `ig_pobtotal_dist` | `geom` (MultiPolygon), `fid`, `capital`, `nombdep`, `nombprov`, `nombdist`, `ubigeo`, `tematica`, `ccdd`, `ccpp`, `idprov`, `fuente`, `ccdi`, `id_geografia`, `pobtotal` (Double, Censo 2017) |
+
+**Respuesta (extracto):**
+
+```json
+{
+  "type": "FeatureCollection",
+  "totalFeatures": 1,
+  "features": [
+    {
+      "type": "Feature",
+      "id": "ig_pobtotal_dist.1290",
+      "geometry": null,
+      "properties": { "nombdep": "Lima", "nombprov": "Lima", "nombdist": "Lima", "ubigeo": "150101", "pobtotal": 273142 }
+    }
+  ]
+}
+```
+
+**Consideraciones:**
+
+- `ig_distrito` no incluye los nombres de departamento ni provincia; `ig_pobtotal_dist` tiene los mismos límites y además nombres y población, por eso el sistema consulta esa capa.
+- Ninguna capa publica la densidad: se calcula dividiendo `pobtotal` entre el área del polígono (`geom`).
+- `DWITHIN` acepta la distancia en `kilometers`; anteponer `BBOX` limita la búsqueda al rectángulo del radio.
+- Un punto en el mar devuelve `features` vacío.
 
 ### 3.3 WMS GetMap
 
