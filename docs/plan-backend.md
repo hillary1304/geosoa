@@ -48,12 +48,12 @@ com.geosoa.backend
 
 **Objetivo:** consumir y normalizar los sismos del IGP (ArcGIS REST).
 
-- [ ] Cliente HTTP con `RestClient`, URL base y timeouts configurables.
-- [ ] Consulta de `UltimoSismo` y de `SismosReportados` con filtros por fecha, magnitud y departamento, más paginación.
-- [ ] Conversión de `fechaevento` (epoch ms) a `America/Lima`.
-- [ ] Descartar registros con campos nulos.
-- [ ] Mapeo de la respuesta ArcGIS al modelo `Sismo`.
-- [ ] Pruebas con respuestas simuladas (`MockRestServiceServer`).
+- [x] Cliente HTTP con `RestClient`, URL base y timeouts configurables.
+- [x] Consulta de `UltimoSismo` y de `SismosReportados` con filtros por fecha, magnitud y departamento, más paginación.
+- [x] Conversión de `fechaevento` (epoch ms) a `America/Lima`.
+- [x] Descartar registros con campos nulos.
+- [x] Mapeo de la respuesta ArcGIS al modelo `Sismo`.
+- [x] Pruebas con respuestas simuladas (`MockRestServiceServer`).
 
 **Entregable:** `IgpAdapter` devuelve sismos normalizados.
 
