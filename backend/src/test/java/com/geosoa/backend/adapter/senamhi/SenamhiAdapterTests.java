@@ -37,7 +37,7 @@ class SenamhiAdapterTests {
 	void configurar() {
 		RestClient.Builder builder = RestClient.builder().baseUrl(URL_BASE);
 		server = MockRestServiceServer.bindTo(builder).build();
-		adapter = new SenamhiAdapter(builder.build());
+		adapter = new SenamhiAdapter(builder.build(), CapaPrecipitacion.ANUAL);
 	}
 
 	@Test
@@ -59,6 +59,27 @@ class SenamhiAdapterTests {
 
 		assertThat(precipitacion).isEqualTo(new Precipitacion("ANUAL", 10, 15.0));
 		server.verify();
+	}
+
+	@Test
+	void consultaLaCapaIndicada() {
+		server.expect(requestTo(startsWith(URL_BASE + "/g_05_02/ows")))
+			.andExpect(parametro("typeName", "g_05_02:05_02_001_03_001_512_0000_00_00"))
+			.andRespond(withSuccess("""
+					{"type": "FeatureCollection", "features": [{"properties": {"rango": "200 - 300"}}]}
+					""", MediaType.APPLICATION_JSON));
+
+		Precipitacion precipitacion = adapter.precipitacion(-11.49, -74.59, CapaPrecipitacion.ENERO).orElseThrow();
+
+		assertThat(precipitacion).isEqualTo(new Precipitacion("ENERO", 200, 300.0));
+		server.verify();
+	}
+
+	@Test
+	void armaElNombreDeCadaCapa() {
+		assertThat(CapaPrecipitacion.ANUAL.typeName()).isEqualTo("g_05_02:05_02_013_03_001_512_0000_00_00");
+		assertThat(CapaPrecipitacion.DICIEMBRE.typeName()).isEqualTo("g_05_02:05_02_012_03_001_512_0000_00_00");
+		assertThat(CapaPrecipitacion.PRIMAVERA.typeName()).isEqualTo("g_05_02:05_02_017_03_001_512_0000_00_00");
 	}
 
 	@Test
