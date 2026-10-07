@@ -135,6 +135,51 @@ class IneiAdapterTests {
 	}
 
 	@Test
+	void obtieneLosDistritosDentroDeUnRadio() {
+		server.expect(requestTo(startsWith(URL_BASE + "/ows")))
+			.andExpect(parametro("propertyName", "ubigeo,nombdep,nombprov,nombdist,pobtotal,geom"))
+			.andExpect(parametro("CQL_FILTER", "BBOX(geom,-72.9271,-16.3697,-72.5529,-16.0103)"
+					+ " AND DWITHIN(geom,POINT(-72.74 -16.19),20.0,kilometers)"))
+			.andRespond(withSuccess("""
+					{"type": "FeatureCollection", "totalFeatures": 3, "features": [
+						{"geometry": null, "properties": {"ubigeo": "040401", "nombdep": "Arequipa",
+							"nombprov": "Castilla", "nombdist": "Aplao", "pobtotal": 7956}},
+						{"geometry": null, "properties": {"ubigeo": "040413", "nombdep": "Arequipa",
+							"nombprov": "Castilla", "nombdist": "Uraca", "pobtotal": 7236.0}},
+						{"geometry": null, "properties": {"ubigeo": "040206", "nombdep": "Arequipa",
+							"nombprov": "Camaná", "nombdist": "Ocoña", "pobtotal": null}}
+					]}
+					""", MediaType.APPLICATION_JSON));
+
+		List<DistritoPoblado> distritos = adapter.distritosEnRadio(-16.19, -72.74, 20);
+
+		assertThat(distritos).containsExactly(
+				new DistritoPoblado(new Distrito("040401", "Arequipa", "Castilla", "Aplao"),
+						new Poblacion("040401", 7_956, null)),
+				new DistritoPoblado(new Distrito("040413", "Arequipa", "Castilla", "Uraca"),
+						new Poblacion("040413", 7_236, null)));
+		server.verify();
+	}
+
+	@Test
+	void devuelveListaVaciaSinDistritosEnElRadio() {
+		server.expect(requestTo(startsWith(URL_BASE + "/ows")))
+			.andRespond(withSuccess("""
+					{"type": "FeatureCollection", "totalFeatures": 0, "features": []}
+					""", MediaType.APPLICATION_JSON));
+
+		assertThat(adapter.distritosEnRadio(-12, -85, 10)).isEmpty();
+	}
+
+	@Test
+	void rechazaRadioInvalido() {
+		assertThatThrownBy(() -> adapter.distritosEnRadio(-16.19, -72.74, 0))
+			.isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> adapter.distritosEnRadio(-16.19, -72.74, Double.NaN))
+			.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
 	void calculaElAreaDescontandoLosHuecos() {
 		Multipoligono cuadrado = new Multipoligono(List.of(List.of(
 				List.of(List.of(0.0, 0.0), List.of(1.0, 0.0), List.of(1.0, 1.0), List.of(0.0, 1.0), List.of(0.0, 0.0)))));

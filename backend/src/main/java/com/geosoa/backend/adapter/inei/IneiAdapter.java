@@ -25,6 +25,10 @@ public class IneiAdapter {
 
 	private static final String ATRIBUTOS_POBLACION = "ubigeo,pobtotal,geom";
 
+	private static final String ATRIBUTOS_COMPLETOS = "ubigeo,nombdep,nombprov,nombdist,pobtotal,geom";
+
+	private static final double KM_POR_GRADO = 111.32;
+
 	private static final Pattern UBIGEO = Pattern.compile("\\d{6}");
 
 	private final RestClient restClient;
@@ -40,7 +44,7 @@ public class IneiAdapter {
 			.map(RespuestaWfs.Feature::properties)
 			.filter(Objects::nonNull)
 			.filter(RespuestaWfs.Propiedades::completas)
-			.map(p -> new Distrito(p.ubigeo(), p.nombdep(), p.nombprov(), p.nombdist()))
+			.map(IneiAdapter::toDistrito)
 			.findFirst();
 	}
 
@@ -52,6 +56,24 @@ public class IneiAdapter {
 			.filter(f -> f.properties() != null && f.properties().pobtotal() != null)
 			.map(IneiAdapter::toPoblacion)
 			.findFirst();
+	}
+
+	// Distritos cuyo límite queda a menos de radioKm del punto, no solo los que contienen el punto.
+	public List<DistritoPoblado> distritosEnRadio(double latitud, double longitud, double radioKm) {
+		validarCoordenadas(latitud, longitud);
+		if (!(radioKm > 0) || Double.isInfinite(radioKm)) {
+			throw new IllegalArgumentException("Radio inválido: " + radioKm);
+		}
+		String filtro = bbox(latitud, longitud, radioKm) + " AND DWITHIN(geom," + punto(latitud, longitud) + ","
+				+ decimal(radioKm) + ",kilometers)";
+		return consultar(filtro, ATRIBUTOS_COMPLETOS).features().stream()
+			.filter(f -> f.properties() != null && f.properties().completas() && f.properties().pobtotal() != null)
+			.map(f -> new DistritoPoblado(toDistrito(f.properties()), toPoblacion(f)))
+			.toList();
+	}
+
+	private static Distrito toDistrito(RespuestaWfs.Propiedades p) {
+		return new Distrito(p.ubigeo(), p.nombdep(), p.nombprov(), p.nombdist());
 	}
 
 	static Poblacion toPoblacion(RespuestaWfs.Feature feature) {
@@ -94,6 +116,20 @@ public class IneiAdapter {
 		if (!(latitud >= -90 && latitud <= 90) || !(longitud >= -180 && longitud <= 180)) {
 			throw new IllegalArgumentException("Coordenadas fuera de rango: " + latitud + ", " + longitud);
 		}
+	}
+
+	// Rectángulo que contiene el círculo del radio, para que GeoServer use su índice espacial.
+	private static String bbox(double latitud, double longitud, double radioKm) {
+		double deltaLatitud = radioKm / KM_POR_GRADO;
+		double deltaLongitud = radioKm / (KM_POR_GRADO * Math.max(Math.cos(Math.toRadians(latitud)), 0.01));
+		return "BBOX(geom," + decimal(redondear(longitud - deltaLongitud, false)) + ","
+				+ decimal(redondear(latitud - deltaLatitud, false)) + ","
+				+ decimal(redondear(longitud + deltaLongitud, true)) + ","
+				+ decimal(redondear(latitud + deltaLatitud, true)) + ")";
+	}
+
+	private static double redondear(double valor, boolean haciaArriba) {
+		return (haciaArriba ? Math.ceil(valor * 1e4) : Math.floor(valor * 1e4)) / 1e4;
 	}
 
 	private static String punto(double latitud, double longitud) {
