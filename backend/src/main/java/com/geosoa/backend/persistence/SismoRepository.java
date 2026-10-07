@@ -1,6 +1,7 @@
 package com.geosoa.backend.persistence;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,6 +14,8 @@ import org.springframework.data.repository.query.Param;
 public interface SismoRepository extends JpaRepository<SismoEntity, Long> {
 
 	Optional<SismoEntity> findByCodigo(String codigo);
+
+	List<SismoEntity> findByCodigoIn(Collection<String> codigos);
 
 	Optional<SismoEntity> findFirstByOrderByFechaEventoDesc();
 
