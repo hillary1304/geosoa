@@ -8,8 +8,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -20,16 +22,19 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.geosoa.backend.adapter.igp.IgpAdapter;
 import com.geosoa.backend.adapter.inei.DistritoPoblado;
-import com.geosoa.backend.adapter.inei.IneiAdapter;
-import com.geosoa.backend.adapter.senamhi.SenamhiAdapter;
+import com.geosoa.backend.domain.Dato;
 import com.geosoa.backend.domain.Distrito;
 import com.geosoa.backend.domain.EventoIntegrado;
 import com.geosoa.backend.domain.Fuente;
+import com.geosoa.backend.domain.Origen;
 import com.geosoa.backend.domain.Poblacion;
 import com.geosoa.backend.domain.Precipitacion;
+import com.geosoa.backend.domain.Procedencia;
 import com.geosoa.backend.domain.Sismo;
+import com.geosoa.backend.resilience.IgpResiliente;
+import com.geosoa.backend.resilience.IneiResiliente;
+import com.geosoa.backend.resilience.SenamhiResiliente;
 import com.geosoa.backend.shared.FuenteNoDisponibleException;
 
 class OrquestadorServiceTests {
@@ -49,44 +54,48 @@ class OrquestadorServiceTests {
 
 	private static final Precipitacion PRECIPITACION = new Precipitacion("ANUAL", 10, 15.0);
 
-	private IgpAdapter igp;
+	private static final Procedencia EN_VIVO = new Procedencia(Origen.LIVE, Instant.parse("2026-10-07T15:00:00Z"));
 
-	private SenamhiAdapter senamhi;
+	private static final Procedencia ALMACENADA = new Procedencia(Origen.DB, Instant.parse("2026-10-06T12:00:00Z"));
 
-	private IneiAdapter inei;
+	private IgpResiliente igp;
+
+	private SenamhiResiliente senamhi;
+
+	private IneiResiliente inei;
 
 	private OrquestadorService orquestador;
 
 	@BeforeEach
 	void configurar() {
-		igp = mock(IgpAdapter.class);
-		senamhi = mock(SenamhiAdapter.class);
-		inei = mock(IneiAdapter.class);
+		igp = mock(IgpResiliente.class);
+		senamhi = mock(SenamhiResiliente.class);
+		inei = mock(IneiResiliente.class);
 		orquestador = new OrquestadorService(igp, senamhi, inei, Runnable::run);
 	}
 
 	@Test
 	void integraLasTresFuentes() {
-		when(senamhi.precipitacion(-12.05, -77.03)).thenReturn(Optional.of(PRECIPITACION));
-		when(inei.distrito(-12.05, -77.03)).thenReturn(Optional.of(LIMA));
-		when(inei.distritosEnRadio(-12.05, -77.03, RADIO_KM)).thenReturn(List.of(
-				new DistritoPoblado(LIMA, POBLACION_LIMA), new DistritoPoblado(CALLAO, POBLACION_CALLAO)));
+		when(senamhi.precipitacion(-12.05, -77.03)).thenReturn(enVivo(Optional.of(PRECIPITACION)));
+		when(inei.distrito(-12.05, -77.03)).thenReturn(enVivo(Optional.of(LIMA)));
+		when(inei.distritosEnRadio(-12.05, -77.03, RADIO_KM)).thenReturn(enVivo(List.of(
+				new DistritoPoblado(LIMA, POBLACION_LIMA), new DistritoPoblado(CALLAO, POBLACION_CALLAO))));
 
 		EventoIntegrado evento = orquestador.integrar(SISMO);
 
 		assertThat(evento).isEqualTo(new EventoIntegrado(SISMO, LIMA, PRECIPITACION, POBLACION_LIMA, RADIO_KM,
-				268352L + 451260L, Set.of()));
+				268352L + 451260L, Set.of(), Map.of(Fuente.SENAMHI, EN_VIVO, Fuente.INEI, EN_VIVO)));
 		assertThat(evento.completo()).isTrue();
 		verify(inei, never()).poblacion(LIMA.ubigeo());
 	}
 
 	@Test
 	void consultaLaPoblacionDelEpicentroSiNoVieneEnElRadio() {
-		when(senamhi.precipitacion(-12.05, -77.03)).thenReturn(Optional.of(PRECIPITACION));
-		when(inei.distrito(-12.05, -77.03)).thenReturn(Optional.of(LIMA));
+		when(senamhi.precipitacion(-12.05, -77.03)).thenReturn(enVivo(Optional.of(PRECIPITACION)));
+		when(inei.distrito(-12.05, -77.03)).thenReturn(enVivo(Optional.of(LIMA)));
 		when(inei.distritosEnRadio(-12.05, -77.03, RADIO_KM))
-			.thenReturn(List.of(new DistritoPoblado(CALLAO, POBLACION_CALLAO)));
-		when(inei.poblacion("150101")).thenReturn(Optional.of(POBLACION_LIMA));
+			.thenReturn(enVivo(List.of(new DistritoPoblado(CALLAO, POBLACION_CALLAO))));
+		when(inei.poblacion("150101")).thenReturn(enVivo(Optional.of(POBLACION_LIMA)));
 
 		EventoIntegrado evento = orquestador.integrar(SISMO);
 
@@ -98,9 +107,9 @@ class OrquestadorServiceTests {
 	void respondeParcialmenteSiElSenamhiNoResponde() {
 		when(senamhi.precipitacion(-12.05, -77.03))
 			.thenThrow(new FuenteNoDisponibleException(Fuente.SENAMHI, "Error al consultar el SENAMHI", null));
-		when(inei.distrito(-12.05, -77.03)).thenReturn(Optional.of(LIMA));
+		when(inei.distrito(-12.05, -77.03)).thenReturn(enVivo(Optional.of(LIMA)));
 		when(inei.distritosEnRadio(-12.05, -77.03, RADIO_KM))
-			.thenReturn(List.of(new DistritoPoblado(LIMA, POBLACION_LIMA)));
+			.thenReturn(enVivo(List.of(new DistritoPoblado(LIMA, POBLACION_LIMA))));
 
 		EventoIntegrado evento = orquestador.integrar(SISMO);
 
@@ -115,7 +124,7 @@ class OrquestadorServiceTests {
 	void respondeParcialmenteSiElIneiNoResponde() {
 		FuenteNoDisponibleException caida = new FuenteNoDisponibleException(Fuente.INEI, "Error al consultar el INEI",
 				null);
-		when(senamhi.precipitacion(-12.05, -77.03)).thenReturn(Optional.of(PRECIPITACION));
+		when(senamhi.precipitacion(-12.05, -77.03)).thenReturn(enVivo(Optional.of(PRECIPITACION)));
 		when(inei.distrito(-12.05, -77.03)).thenThrow(caida);
 		when(inei.distritosEnRadio(-12.05, -77.03, RADIO_KM)).thenThrow(caida);
 
@@ -131,8 +140,8 @@ class OrquestadorServiceTests {
 
 	@Test
 	void marcaAlIneiSiFallaSoloLaConsultaDePoblacion() {
-		when(senamhi.precipitacion(-12.05, -77.03)).thenReturn(Optional.of(PRECIPITACION));
-		when(inei.distrito(-12.05, -77.03)).thenReturn(Optional.of(LIMA));
+		when(senamhi.precipitacion(-12.05, -77.03)).thenReturn(enVivo(Optional.of(PRECIPITACION)));
+		when(inei.distrito(-12.05, -77.03)).thenReturn(enVivo(Optional.of(LIMA)));
 		when(inei.distritosEnRadio(-12.05, -77.03, RADIO_KM))
 			.thenThrow(new FuenteNoDisponibleException(Fuente.INEI, "Error al consultar el INEI", null));
 		when(inei.poblacion("150101"))
@@ -147,10 +156,10 @@ class OrquestadorServiceTests {
 
 	@Test
 	void noMarcaFaltantesCuandoElEpicentroEstaEnElMar() {
-		when(senamhi.precipitacion(-12.05, -77.03)).thenReturn(Optional.empty());
-		when(inei.distrito(-12.05, -77.03)).thenReturn(Optional.empty());
+		when(senamhi.precipitacion(-12.05, -77.03)).thenReturn(enVivo(Optional.empty()));
+		when(inei.distrito(-12.05, -77.03)).thenReturn(enVivo(Optional.empty()));
 		when(inei.distritosEnRadio(-12.05, -77.03, RADIO_KM))
-			.thenReturn(List.of(new DistritoPoblado(CALLAO, POBLACION_CALLAO)));
+			.thenReturn(enVivo(List.of(new DistritoPoblado(CALLAO, POBLACION_CALLAO))));
 
 		EventoIntegrado evento = orquestador.integrar(SISMO);
 
@@ -166,14 +175,14 @@ class OrquestadorServiceTests {
 		CountDownLatch ambasEnCurso = new CountDownLatch(2);
 		when(senamhi.precipitacion(-12.05, -77.03)).thenAnswer(invocacion -> {
 			esperarA(ambasEnCurso);
-			return Optional.of(PRECIPITACION);
+			return enVivo(Optional.of(PRECIPITACION));
 		});
 		when(inei.distrito(-12.05, -77.03)).thenAnswer(invocacion -> {
 			esperarA(ambasEnCurso);
-			return Optional.of(LIMA);
+			return enVivo(Optional.of(LIMA));
 		});
 		when(inei.distritosEnRadio(eq(-12.05), eq(-77.03), anyDouble()))
-			.thenReturn(List.of(new DistritoPoblado(LIMA, POBLACION_LIMA)));
+			.thenReturn(enVivo(List.of(new DistritoPoblado(LIMA, POBLACION_LIMA))));
 
 		try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
 			EventoIntegrado evento = new OrquestadorService(igp, senamhi, inei, executor).integrar(SISMO);
@@ -184,20 +193,54 @@ class OrquestadorServiceTests {
 
 	@Test
 	void integraElUltimoSismoDelIgp() {
-		when(igp.ultimoSismo()).thenReturn(Optional.of(SISMO));
-		when(senamhi.precipitacion(-12.05, -77.03)).thenReturn(Optional.of(PRECIPITACION));
-		when(inei.distrito(-12.05, -77.03)).thenReturn(Optional.of(LIMA));
+		when(igp.ultimoSismo()).thenReturn(enVivo(Optional.of(SISMO)));
+		when(senamhi.precipitacion(-12.05, -77.03)).thenReturn(enVivo(Optional.of(PRECIPITACION)));
+		when(inei.distrito(-12.05, -77.03)).thenReturn(enVivo(Optional.of(LIMA)));
 		when(inei.distritosEnRadio(-12.05, -77.03, RADIO_KM))
-			.thenReturn(List.of(new DistritoPoblado(LIMA, POBLACION_LIMA)));
+			.thenReturn(enVivo(List.of(new DistritoPoblado(LIMA, POBLACION_LIMA))));
 
 		assertThat(orquestador.ultimoEvento()).get().extracting(EventoIntegrado::sismo).isEqualTo(SISMO);
 	}
 
 	@Test
 	void noIntegraNadaSiElIgpNoTieneSismos() {
-		when(igp.ultimoSismo()).thenReturn(Optional.empty());
+		when(igp.ultimoSismo()).thenReturn(enVivo(Optional.empty()));
 
 		assertThat(orquestador.ultimoEvento()).isEmpty();
+	}
+
+	@Test
+	void informaLaProcedenciaMenosFrescaDeCadaFuente() {
+		when(igp.ultimoSismo()).thenReturn(new Dato<>(Optional.of(SISMO), ALMACENADA));
+		when(senamhi.precipitacion(-12.05, -77.03))
+			.thenReturn(new Dato<>(Optional.of(PRECIPITACION), new Procedencia(Origen.CACHE, EN_VIVO.actualizadoEn())));
+		when(inei.distrito(-12.05, -77.03)).thenReturn(enVivo(Optional.of(LIMA)));
+		when(inei.distritosEnRadio(-12.05, -77.03, RADIO_KM))
+			.thenReturn(new Dato<>(List.of(new DistritoPoblado(LIMA, POBLACION_LIMA)), ALMACENADA));
+
+		EventoIntegrado evento = orquestador.ultimoEvento().orElseThrow();
+
+		assertThat(evento.procedencias()).containsExactlyInAnyOrderEntriesOf(Map.of(
+				Fuente.IGP, ALMACENADA,
+				Fuente.SENAMHI, new Procedencia(Origen.CACHE, EN_VIVO.actualizadoEn()),
+				Fuente.INEI, ALMACENADA));
+	}
+
+	@Test
+	void noInformaProcedenciaDeLasFuentesFaltantes() {
+		when(senamhi.precipitacion(-12.05, -77.03))
+			.thenThrow(new FuenteNoDisponibleException(Fuente.SENAMHI, "Error al consultar el SENAMHI", null));
+		when(inei.distrito(-12.05, -77.03)).thenReturn(enVivo(Optional.of(LIMA)));
+		when(inei.distritosEnRadio(-12.05, -77.03, RADIO_KM))
+			.thenReturn(enVivo(List.of(new DistritoPoblado(LIMA, POBLACION_LIMA))));
+
+		EventoIntegrado evento = orquestador.integrar(SISMO);
+
+		assertThat(evento.procedencias()).containsOnlyKeys(Fuente.INEI);
+	}
+
+	private static <T> Dato<T> enVivo(T valor) {
+		return new Dato<>(valor, EN_VIVO);
 	}
 
 	// Solo termina si la otra consulta corre al mismo tiempo; con consultas en serie fallaría por tiempo.

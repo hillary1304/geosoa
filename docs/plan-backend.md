@@ -103,7 +103,7 @@ com.geosoa.backend
 - [x] Reintentos con espera y circuit breaker por adaptador (Resilience4j).
 - [x] Respaldo en MySQL: si la fuente falla, servir el último dato almacenado.
 - [x] Tarea programada (`@Scheduled`) para sincronizar sismos recientes.
-- [ ] Incluir en las respuestas la procedencia del dato (`origen`: `live`, `cache` o `db`) y su fecha de actualización.
+- [x] Incluir en las respuestas la procedencia del dato (`origen`: `live`, `cache` o `db`) y su fecha de actualización.
 - [ ] Indicador de estado de cada fuente externa en Actuator.
 
 **Entregable:** el sistema sigue respondiendo con datos almacenados con una fuente caída.
