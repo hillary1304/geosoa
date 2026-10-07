@@ -21,6 +21,11 @@ public class ClientesHttpConfig {
 		return restClient(properties.url(), properties.connectTimeout(), properties.readTimeout());
 	}
 
+	@Bean
+	RestClient ineiRestClient(IneiProperties properties) {
+		return restClient(properties.url(), properties.connectTimeout(), properties.readTimeout());
+	}
+
 	private static RestClient restClient(URI url, Duration connectTimeout, Duration readTimeout) {
 		SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
 		requestFactory.setConnectTimeout(connectTimeout);

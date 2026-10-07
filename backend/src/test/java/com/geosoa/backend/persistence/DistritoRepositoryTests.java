@@ -35,6 +35,16 @@ class DistritoRepositoryTests {
 	}
 
 	@Test
+	void guardaLosLimitesDelDistrito() {
+		String limites = "[[[[-72.0,-16.0],[-71.9,-16.0],[-71.9,-15.9],[-72.0,-16.0]]]]".repeat(500);
+		DistritoEntity entity = DistritoEntity.from(APLAO);
+		entity.asignarLimites(limites, -72.0, -16.0, -71.9, -15.9);
+		repository.saveAndFlush(entity);
+
+		assertThat(repository.findById("040402").orElseThrow().getLimites()).isEqualTo(limites);
+	}
+
+	@Test
 	void distritoSinPoblacionDevuelveVacio() {
 		repository.saveAndFlush(DistritoEntity.from(APLAO));
 

@@ -35,6 +35,22 @@ public class DistritoEntity {
 	@Column(name = "densidad_hab_km2")
 	private Double densidadHabKm2;
 
+	// Coordenadas GeoJSON del MultiPolygon del distrito.
+	@Column(columnDefinition = "longtext")
+	private String limites;
+
+	@Column(name = "min_longitud")
+	private Double minLongitud;
+
+	@Column(name = "min_latitud")
+	private Double minLatitud;
+
+	@Column(name = "max_longitud")
+	private Double maxLongitud;
+
+	@Column(name = "max_latitud")
+	private Double maxLatitud;
+
 	@Column(name = "actualizado_en", nullable = false)
 	private Instant actualizadoEn;
 
@@ -55,6 +71,15 @@ public class DistritoEntity {
 		this.densidadHabKm2 = poblacion.densidadHabKm2();
 	}
 
+	public void asignarLimites(String limites, double minLongitud, double minLatitud, double maxLongitud,
+			double maxLatitud) {
+		this.limites = limites;
+		this.minLongitud = minLongitud;
+		this.minLatitud = minLatitud;
+		this.maxLongitud = maxLongitud;
+		this.maxLatitud = maxLatitud;
+	}
+
 	public Distrito toDistrito() {
 		return new Distrito(ubigeo, departamento, provincia, nombre);
 	}
@@ -71,6 +96,10 @@ public class DistritoEntity {
 
 	public String getUbigeo() {
 		return ubigeo;
+	}
+
+	public String getLimites() {
+		return limites;
 	}
 
 	public Instant getActualizadoEn() {
