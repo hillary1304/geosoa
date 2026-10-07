@@ -10,7 +10,9 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import static org.hamcrest.Matchers.startsWith;
 
+import java.time.LocalDate;
 import java.time.ZonedDateTime;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -115,6 +117,79 @@ class IgpAdapterTests {
 		assertThatThrownBy(adapter::ultimoSismo)
 			.isInstanceOf(FuenteNoDisponibleException.class)
 			.hasMessageContaining("Unable to complete operation.");
+	}
+
+	@Test
+	void listaSismosReportadosPaginadosYDescartaRegistrosNulos() {
+		server.expect(requestTo(startsWith(URL_BASE + "/SismosReportados/MapServer/0/query")))
+			.andExpect(method(HttpMethod.GET))
+			.andExpect(queryParam("resultOffset", "100"))
+			.andExpect(queryParam("resultRecordCount", "50"))
+			.andExpect(queryParam("orderByFields", "fechaevento%20DESC"))
+			.andRespond(withSuccess("""
+					{"features": [
+						{"attributes": {"code": "2026-716", "fechaevento": 1791161419000, "lat": -10.56, "lon": -75.39,
+							"prof": 10, "magnitud": 3.5, "int_": "II-III Oxapampa",
+							"ref": "2 km al NE de Oxapampa, Oxapampa - Pasco", "departamento": "PASCO", "sentido": "1"}},
+						{"attributes": {"code": null, "fechaevento": null, "lat": null, "lon": null,
+							"prof": null, "magnitud": null}},
+						{"attributes": {"code": "2026-717", "fechaevento": 1791170000000, "lat": -12.1, "lon": -77.9,
+							"prof": 40, "magnitud": 4.1, "int_": null, "ref": "50 km al O de Callao",
+							"departamento": null, "sentido": "0"}}
+					]}
+					""", MediaType.APPLICATION_JSON));
+
+		List<Sismo> sismos = adapter.sismosReportados(FiltroSismos.sinFiltros(), 2, 50);
+
+		assertThat(sismos).extracting(Sismo::codigo).containsExactly("2026-716", "2026-717");
+		Sismo primero = sismos.getFirst();
+		assertThat(primero.fechaHora()).isEqualTo(ZonedDateTime.parse("2026-10-04T19:50:19-05:00[America/Lima]"));
+		assertThat(primero.profundidadKm()).isEqualTo(10);
+		assertThat(primero.intensidad()).isEqualTo("II-III Oxapampa");
+		assertThat(primero.departamento()).isEqualTo("PASCO");
+		assertThat(primero.sentido()).isTrue();
+		assertThat(sismos.get(1).sentido()).isFalse();
+		server.verify();
+	}
+
+	@Test
+	void cuentaSismosReportados() {
+		server.expect(requestTo(startsWith(URL_BASE + "/SismosReportados/MapServer/0/query")))
+			.andExpect(queryParam("returnCountOnly", "true"))
+			.andRespond(withSuccess("{\"count\": 719}", MediaType.APPLICATION_JSON));
+
+		assertThat(adapter.contarSismosReportados(FiltroSismos.sinFiltros())).isEqualTo(719);
+	}
+
+	@Test
+	void rechazaPaginacionInvalida() {
+		assertThatThrownBy(() -> adapter.sismosReportados(FiltroSismos.sinFiltros(), -1, 10))
+			.isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> adapter.sismosReportados(FiltroSismos.sinFiltros(), 0, 2001))
+			.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	void sinFiltrosSoloExcluyeRegistrosSinFecha() {
+		assertThat(IgpAdapter.where(FiltroSismos.sinFiltros())).isEqualTo("fechaevento IS NOT NULL");
+	}
+
+	@Test
+	void filtraPorDiasEnHoraDeLimaMagnitudYDepartamento() {
+		FiltroSismos filtro = new FiltroSismos(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 5), 4.0, " junín ");
+
+		assertThat(IgpAdapter.where(filtro)).isEqualTo("fechaevento IS NOT NULL"
+				+ " AND fechaevento >= TIMESTAMP '2026-10-01 05:00:00'"
+				+ " AND fechaevento < TIMESTAMP '2026-10-06 05:00:00'"
+				+ " AND magnitud >= 4.0"
+				+ " AND departamento = 'JUNÍN'");
+	}
+
+	@Test
+	void escapaComillasEnElDepartamento() {
+		FiltroSismos filtro = new FiltroSismos(null, null, null, "x' OR '1'='1");
+
+		assertThat(IgpAdapter.where(filtro)).endsWith("departamento = 'X'' OR ''1''=''1'");
 	}
 
 	@Test
