@@ -31,7 +31,7 @@ public class IneiAdapter {
 	// Se piden los límites en toda consulta para guardarlos como respaldo.
 	private static final String ATRIBUTOS = "ubigeo,nombdep,nombprov,nombdist,pobtotal,geom";
 
-	private static final double KM_POR_GRADO = 111.32;
+	static final double KM_POR_GRADO = 111.32;
 
 	private static final Pattern UBIGEO = Pattern.compile("\\d{6}");
 
