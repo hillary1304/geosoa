@@ -6,7 +6,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -14,18 +17,19 @@ import org.springframework.web.client.RestClientException;
 import com.geosoa.backend.domain.Distrito;
 import com.geosoa.backend.domain.Fuente;
 import com.geosoa.backend.domain.Poblacion;
+import com.geosoa.backend.persistence.DistritoEntity;
+import com.geosoa.backend.persistence.DistritoRepository;
 import com.geosoa.backend.shared.FuenteNoDisponibleException;
 
 @Component
 public class IneiAdapter {
 
+	private static final Logger log = LoggerFactory.getLogger(IneiAdapter.class);
+
 	static final String CAPA_DISTRITOS = "Interoperabilidad:ig_pobtotal_dist";
 
-	private static final String ATRIBUTOS_DISTRITO = "ubigeo,nombdep,nombprov,nombdist";
-
-	private static final String ATRIBUTOS_POBLACION = "ubigeo,pobtotal,geom";
-
-	private static final String ATRIBUTOS_COMPLETOS = "ubigeo,nombdep,nombprov,nombdist,pobtotal,geom";
+	// Se piden los límites en toda consulta para guardarlos como respaldo.
+	private static final String ATRIBUTOS = "ubigeo,nombdep,nombprov,nombdist,pobtotal,geom";
 
 	private static final double KM_POR_GRADO = 111.32;
 
@@ -33,14 +37,17 @@ public class IneiAdapter {
 
 	private final RestClient restClient;
 
-	public IneiAdapter(@Qualifier("ineiRestClient") RestClient restClient) {
+	private final DistritoRepository distritoRepository;
+
+	public IneiAdapter(@Qualifier("ineiRestClient") RestClient restClient, DistritoRepository distritoRepository) {
 		this.restClient = restClient;
+		this.distritoRepository = distritoRepository;
 	}
 
 	// Vacío cuando el punto no pertenece a ningún distrito, por ejemplo en el mar.
 	public Optional<Distrito> distrito(double latitud, double longitud) {
 		validarCoordenadas(latitud, longitud);
-		return consultar("INTERSECTS(geom," + punto(latitud, longitud) + ")", ATRIBUTOS_DISTRITO).features().stream()
+		return consultar("INTERSECTS(geom," + punto(latitud, longitud) + ")").features().stream()
 			.map(RespuestaWfs.Feature::properties)
 			.filter(Objects::nonNull)
 			.filter(RespuestaWfs.Propiedades::completas)
@@ -52,7 +59,7 @@ public class IneiAdapter {
 		if (ubigeo == null || !UBIGEO.matcher(ubigeo).matches()) {
 			throw new IllegalArgumentException("Ubigeo inválido: " + ubigeo);
 		}
-		return consultar("ubigeo='" + ubigeo + "'", ATRIBUTOS_POBLACION).features().stream()
+		return consultar("ubigeo='" + ubigeo + "'").features().stream()
 			.filter(f -> f.properties() != null && f.properties().pobtotal() != null)
 			.map(IneiAdapter::toPoblacion)
 			.findFirst();
@@ -66,7 +73,7 @@ public class IneiAdapter {
 		}
 		String filtro = bbox(latitud, longitud, radioKm) + " AND DWITHIN(geom," + punto(latitud, longitud) + ","
 				+ decimal(radioKm) + ",kilometers)";
-		return consultar(filtro, ATRIBUTOS_COMPLETOS).features().stream()
+		return consultar(filtro).features().stream()
 			.filter(f -> f.properties() != null && f.properties().completas() && f.properties().pobtotal() != null)
 			.map(f -> new DistritoPoblado(toDistrito(f.properties()), toPoblacion(f)))
 			.toList();
@@ -86,7 +93,42 @@ public class IneiAdapter {
 		return area > 0 ? Math.round(total / area * 10) / 10.0 : null;
 	}
 
-	private RespuestaWfs consultar(String filtro, String atributos) {
+	private RespuestaWfs consultar(String filtro) {
+		RespuestaWfs respuesta = solicitar(filtro);
+		respaldar(respuesta);
+		return respuesta;
+	}
+
+	// Un fallo al guardar el respaldo no debe impedir responder con el dato vigente.
+	private void respaldar(RespuestaWfs respuesta) {
+		List<DistritoEntity> distritos = respuesta.features().stream()
+			.filter(f -> f.properties() != null && f.properties().completas())
+			.filter(f -> f.geometry() != null && !f.geometry().coordinates().isEmpty())
+			.map(IneiAdapter::toEntity)
+			.toList();
+		if (distritos.isEmpty()) {
+			return;
+		}
+		try {
+			distritoRepository.saveAll(distritos);
+		}
+		catch (DataAccessException ex) {
+			log.warn("No se pudo guardar el respaldo de distritos del INEI", ex);
+		}
+	}
+
+	private static DistritoEntity toEntity(RespuestaWfs.Feature feature) {
+		DistritoEntity entity = DistritoEntity.from(toDistrito(feature.properties()));
+		if (feature.properties().pobtotal() != null) {
+			entity.asignarPoblacion(toPoblacion(feature));
+		}
+		Multipoligono.Envolvente envolvente = feature.geometry().envolvente();
+		entity.asignarLimites(feature.geometry().comoJson(), envolvente.minLongitud(), envolvente.minLatitud(),
+				envolvente.maxLongitud(), envolvente.maxLatitud());
+		return entity;
+	}
+
+	private RespuestaWfs solicitar(String filtro) {
 		RespuestaWfs respuesta;
 		try {
 			// GeoServer informa los errores como XML con HTTP 200, lo que aquí falla al leerlos como JSON.
@@ -97,7 +139,7 @@ public class IneiAdapter {
 					.queryParam("request", "GetFeature")
 					.queryParam("typeName", "{typeName}")
 					.queryParam("outputFormat", "{formato}")
-					.queryParam("propertyName", atributos)
+					.queryParam("propertyName", ATRIBUTOS)
 					.queryParam("CQL_FILTER", "{filtro}")
 					.build(CAPA_DISTRITOS, "application/json", filtro))
 				.retrieve()

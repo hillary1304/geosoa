@@ -4,6 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 import static org.hamcrest.Matchers.startsWith;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -16,6 +21,8 @@ import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -28,13 +35,26 @@ import org.springframework.web.util.UriUtils;
 import com.geosoa.backend.domain.Distrito;
 import com.geosoa.backend.domain.Fuente;
 import com.geosoa.backend.domain.Poblacion;
+import com.geosoa.backend.persistence.DistritoEntity;
+import com.geosoa.backend.persistence.DistritoRepository;
 import com.geosoa.backend.shared.FuenteNoDisponibleException;
 
 class IneiAdapterTests {
 
 	private static final String URL_BASE = "https://inei.test/geoserver/Interoperabilidad";
 
+	private static final String DISTRITO_CON_LIMITES = """
+			{"type": "FeatureCollection", "features": [{"type": "Feature", "id": "ig_pobtotal_dist.1290",
+				"geometry": {"type": "MultiPolygon", "coordinates": [[[
+					[-77.05, -12.07], [-77.0, -12.07], [-77.0, -12.02], [-77.05, -12.02], [-77.05, -12.07]
+				]]]},
+				"properties": {"ubigeo": "150101", "nombdep": "Lima", "nombprov": "Lima", "nombdist": "Lima",
+					"pobtotal": 273142}}]}
+			""";
+
 	private MockRestServiceServer server;
+
+	private DistritoRepository repository;
 
 	private IneiAdapter adapter;
 
@@ -42,7 +62,8 @@ class IneiAdapterTests {
 	void configurar() {
 		RestClient.Builder builder = RestClient.builder().baseUrl(URL_BASE);
 		server = MockRestServiceServer.bindTo(builder).build();
-		adapter = new IneiAdapter(builder.build());
+		repository = mock(DistritoRepository.class);
+		adapter = new IneiAdapter(builder.build(), repository);
 	}
 
 	@Test
@@ -51,6 +72,7 @@ class IneiAdapterTests {
 			.andExpect(method(HttpMethod.GET))
 			.andExpect(queryParam("request", "GetFeature"))
 			.andExpect(parametro("typeName", "Interoperabilidad:ig_pobtotal_dist"))
+			.andExpect(parametro("propertyName", "ubigeo,nombdep,nombprov,nombdist,pobtotal,geom"))
 			.andExpect(parametro("CQL_FILTER", "INTERSECTS(geom,POINT(-77.03 -12.05))"))
 			.andRespond(withSuccess("""
 					{"type": "FeatureCollection", "totalFeatures": 1, "features": [
@@ -88,7 +110,6 @@ class IneiAdapterTests {
 	@Test
 	void obtieneLaPoblacionYDensidadDeUnUbigeo() {
 		server.expect(requestTo(startsWith(URL_BASE + "/ows")))
-			.andExpect(parametro("propertyName", "ubigeo,pobtotal,geom"))
 			.andExpect(parametro("CQL_FILTER", "ubigeo='150101'"))
 			.andRespond(withSuccess("""
 					{"type": "FeatureCollection", "features": [{"type": "Feature", "id": "ig_pobtotal_dist.1290",
@@ -137,7 +158,6 @@ class IneiAdapterTests {
 	@Test
 	void obtieneLosDistritosDentroDeUnRadio() {
 		server.expect(requestTo(startsWith(URL_BASE + "/ows")))
-			.andExpect(parametro("propertyName", "ubigeo,nombdep,nombprov,nombdist,pobtotal,geom"))
 			.andExpect(parametro("CQL_FILTER", "BBOX(geom,-72.9271,-16.3697,-72.5529,-16.0103)"
 					+ " AND DWITHIN(geom,POINT(-72.74 -16.19),20.0,kilometers)"))
 			.andRespond(withSuccess("""
@@ -189,6 +209,54 @@ class IneiAdapterTests {
 
 		assertThat(cuadrado.areaKm2()).isCloseTo(12_363, within(5.0));
 		assertThat(conHueco.areaKm2()).isCloseTo(cuadrado.areaKm2() / 2, within(1.0));
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void guardaLosDistritosConsultadosComoRespaldo() {
+		server.expect(requestTo(startsWith(URL_BASE + "/ows")))
+			.andRespond(withSuccess(DISTRITO_CON_LIMITES, MediaType.APPLICATION_JSON));
+
+		adapter.distrito(-12.05, -77.03);
+
+		ArgumentCaptor<List<DistritoEntity>> guardados = ArgumentCaptor.forClass(List.class);
+		verify(repository).saveAll(guardados.capture());
+		DistritoEntity guardado = guardados.getValue().getFirst();
+		assertThat(guardado.toDistrito()).isEqualTo(new Distrito("150101", "Lima", "Lima", "Lima"));
+		assertThat(guardado.toPoblacion()).hasValueSatisfying(p -> assertThat(p.total()).isEqualTo(273_142));
+		assertThat(guardado.getLimites()).isEqualTo(
+				"[[[[-77.05,-12.07],[-77.0,-12.07],[-77.0,-12.02],[-77.05,-12.02],[-77.05,-12.07]]]]");
+	}
+
+	@Test
+	void noGuardaRespaldoSinLimites() {
+		server.expect(requestTo(startsWith(URL_BASE + "/ows")))
+			.andRespond(withSuccess("""
+					{"features": [{"geometry": null, "properties": {"ubigeo": "150101", "nombdep": "Lima",
+						"nombprov": "Lima", "nombdist": "Lima", "pobtotal": 273142}}]}
+					""", MediaType.APPLICATION_JSON));
+
+		adapter.distrito(-12.05, -77.03);
+
+		verify(repository, never()).saveAll(anyList());
+	}
+
+	@Test
+	void respondeAunqueFalleElRespaldo() {
+		when(repository.saveAll(anyList())).thenThrow(new DataAccessResourceFailureException("MySQL caído"));
+		server.expect(requestTo(startsWith(URL_BASE + "/ows")))
+			.andRespond(withSuccess(DISTRITO_CON_LIMITES, MediaType.APPLICATION_JSON));
+
+		assertThat(adapter.distrito(-12.05, -77.03)).contains(new Distrito("150101", "Lima", "Lima", "Lima"));
+	}
+
+	@Test
+	void calculaLaEnvolventeDeLosLimites() {
+		Multipoligono limites = new Multipoligono(List.of(
+				List.of(List.of(List.of(-77.05, -12.07), List.of(-77.0, -12.02), List.of(-77.05, -12.07))),
+				List.of(List.of(List.of(-77.1, -12.0), List.of(-77.08, -11.9), List.of(-77.1, -12.0)))));
+
+		assertThat(limites.envolvente()).isEqualTo(new Multipoligono.Envolvente(-77.1, -12.07, -77.0, -11.9));
 	}
 
 	@Test

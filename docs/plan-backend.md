@@ -77,8 +77,8 @@ com.geosoa.backend
 - [x] Consulta del distrito por punto (Ubigeo, departamento, provincia, distrito).
 - [x] Consulta de población y densidad por Ubigeo.
 - [x] Consulta de distritos dentro de un radio (bbox + filtro por distancia).
-- [ ] Persistir los límites distritales en MySQL como respaldo, porque el servicio presenta caídas.
-- [ ] Pruebas con respuestas simuladas.
+- [x] Persistir los límites distritales en MySQL como respaldo, porque el servicio presenta caídas.
+- [x] Pruebas con respuestas simuladas.
 
 **Entregable:** `IneiAdapter` devuelve el distrito y la población para una coordenada o radio.
 
