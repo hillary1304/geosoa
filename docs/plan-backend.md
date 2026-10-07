@@ -61,11 +61,11 @@ com.geosoa.backend
 
 **Objetivo:** obtener la precipitación en una coordenada (OGC WFS).
 
-- [ ] Cliente WFS `GetFeature` con `CQL_FILTER=INTERSECTS(geom,POINT(lon lat))` y `propertyName=rango`.
-- [ ] Capa configurable (anual por defecto, opción mensual o estacional).
-- [ ] Interpretar `rango` (`"10 - 15"`) como mínimo y máximo en mm.
-- [ ] Manejar respuestas vacías (punto en el mar o sin cobertura).
-- [ ] Pruebas con respuestas simuladas.
+- [x] Cliente WFS `GetFeature` con `CQL_FILTER=INTERSECTS(geom,POINT(lon lat))` y `propertyName=rango`.
+- [x] Capa configurable (anual por defecto, opción mensual o estacional).
+- [x] Interpretar `rango` (`"10 - 15"`) como mínimo y máximo en mm.
+- [x] Manejar respuestas vacías (punto en el mar o sin cobertura).
+- [x] Pruebas con respuestas simuladas.
 
 **Entregable:** `SenamhiAdapter` devuelve la precipitación para una latitud y longitud.
 
