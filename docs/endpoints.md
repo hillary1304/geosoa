@@ -6,7 +6,7 @@ URL base local: `http://localhost:8080`
 
 ### `GET /actuator/health`
 
-Estado de la aplicación y de sus dependencias (base de datos, disco).
+Estado de la aplicación, de sus dependencias (base de datos, disco) y de cada fuente externa.
 
 **Respuesta `200 OK`:**
 
@@ -14,6 +14,14 @@ Estado de la aplicación y de sus dependencias (base de datos, disco).
 {
   "status": "UP",
   "components": {
+    "circuitBreakers": {
+      "status": "UP",
+      "details": {
+        "igp": { "status": "UP", "details": { "state": "CLOSED", "failureRate": "-1.0%" } },
+        "senamhi": { "status": "UP", "details": { "state": "CLOSED", "failureRate": "-1.0%" } },
+        "inei": { "status": "CIRCUIT_OPEN", "details": { "state": "OPEN", "failureRate": "60.0%" } }
+      }
+    },
     "db": { "status": "UP", "details": { "database": "MySQL" } },
     "diskSpace": { "status": "UP" },
     "ping": { "status": "UP" }
@@ -22,6 +30,8 @@ Estado de la aplicación y de sus dependencias (base de datos, disco).
 ```
 
 En el perfil `dev` se muestran los detalles de cada componente.
+
+`circuitBreakers` muestra el circuit breaker de cada fuente: `CLOSED` cuando responde con normalidad y `OPEN` (`CIRCUIT_OPEN`) cuando falló varias veces seguidas y el backend dejó de consultarla por un minuto, respondiendo desde caché o MySQL. Una fuente caída no cambia el `status` general, porque el sistema sigue respondiendo.
 
 ## Formato de error
 
