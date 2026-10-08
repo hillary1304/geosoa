@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GeoSOA – Monitoreo y Análisis de Riesgos Naturales en el Perú</title>
+  <meta name="description" content="Dashboard interactivo basado en Arquitectura Orientada a Servicios (SOA) que integra la actividad sísmica del IGP, datos pluviométricos del SENAMHI y demografía territorial del INEI.">
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  
+  <!-- Estilos del Sistema -->
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/componentes.css">
+</head>
+<body>
+
+  <!-- Loading Overlay (se activará dinámicamente en la Etapa 8) -->
+  <div id="loading-overlay" style="display: none; position: fixed; inset: 0; background: var(--bg-primary); z-index: 9999; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; transition: opacity 0.35s ease;">
+    <div style="width: 48px; height: 48px; border: 4px solid var(--border-subtle); border-top-color: var(--accent-primary); border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+    <div style="font-family: var(--font-heading); font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">
+      Iniciando GeoSOA...
+    </div>
+    <div style="font-size: 0.8rem; color: var(--text-muted);">
+      Sincronizando adaptadores de IGP, SENAMHI e INEI
+    </div>
+  </div>
+  <style>
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+
+  <div class="app-container">
+    
+    <!-- 1. Encabezado / Barra Superior -->
+    <header class="navbar" role="banner">
+      <div class="brand-section">
+        <div class="brand-logo-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+            <line x1="8" y1="2" x2="8" y2="18"></line>
+            <line x1="16" y1="6" x2="16" y2="22"></line>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>GeoSOA <span class="brand-badge">SOA v1.0</span></h1>
+          <span class="brand-subtitle">Plataforma de Riesgos Naturales del Perú</span>
+        </div>
+      </div>
+
+      <!-- Estado de las Fuentes Públicas SOA -->
+      <div class="sources-status-bar" id="sources-status-bar" title="Estado de interoperabilidad con servicios del Estado">
+        <div class="source-item">
+          <span class="pulse-dot" id="status-igp"></span>
+          <span class="label">IGP:</span>
+          <span>Sismos</span>
+        </div>
+        <span class="source-separator">|</span>
+        <div class="source-item">
+          <span class="pulse-dot" id="status-senamhi"></span>
+          <span class="label">SENAMHI:</span>
+          <span>Lluvias</span>
+        </div>
+        <span class="source-separator">|</span>
+        <div class="source-item">
+          <span class="pulse-dot warning" id="status-inei"></span>
+          <span class="label">INEI:</span>
+          <span>Población (Caché)</span>
+        </div>
+      </div>
+
+      <!-- Acciones de Navegación -->
+      <div class="nav-actions">
+        <!-- Indicador Backend / Toggle Mock -->
+        <button class="mode-toggle-btn" id="btn-toggle-mode" title="Alternar entre API real de Spring Boot y datos simulados">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+          </svg>
+          <span class="mode-text">Datos Simulados</span>
+        </button>
+
+        <!-- Toggle Modo Oscuro / Claro -->
+        <button class="icon-btn" id="btn-toggle-theme" title="Cambiar tema visual (claro / oscuro)" aria-label="Cambiar tema">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- 2. Contenido Principal -->
+    <main class="main-content" role="main">
+
+      <!-- Tarjetas KPI / Indicadores Clave -->
+      <section class="kpi-grid" aria-label="Indicadores generales">
+        <article class="glass-panel kpi-card kpi-igp">
+          <div class="kpi-header">
+            <span class="kpi-title">Eventos Sísmicos</span>
+            <div class="kpi-icon-wrapper" style="color: #ef4444;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+              </svg>
+            </div>
+          </div>
+          <div class="kpi-value" id="stat-total-sismos">--</div>
+          <div class="kpi-footer">
+            <span>Sismos analizados en el período</span>
+          </div>
+        </article>
+
+        <article class="glass-panel kpi-card kpi-max">
+          <div class="kpi-header">
+            <span class="kpi-title">Magnitud Máxima</span>
+            <div class="kpi-icon-wrapper" style="color: #f59e0b;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+              </svg>
+            </div>
+          </div>
+          <div class="kpi-value" id="stat-max-mag">--</div>
+          <div class="kpi-footer">
+            <span id="stat-max-loc">Registrado en Perú</span>
+          </div>
+        </article>
+
+        <article class="glass-panel kpi-card kpi-senamhi">
+          <div class="kpi-header">
+            <span class="kpi-title">Último Reporte IGP</span>
+            <div class="kpi-icon-wrapper" style="color: #38bdf8;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+            </div>
+          </div>
+          <div class="kpi-value" style="font-size: 1.35rem;" id="stat-ultimo">--</div>
+          <div class="kpi-footer">
+            <span class="pulse-dot danger"></span>
+            <span id="stat-ultimo-time">Cargando último reporte...</span>
+          </div>
+        </article>
+
+        <article class="glass-panel kpi-card kpi-inei">
+          <div class="kpi-header">
+            <span class="kpi-title">Población Expuesta</span>
+            <div class="kpi-icon-wrapper" style="color: #10b981;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="kpi-value" id="stat-poblacion-expuesta">--</div>
+          <div class="kpi-footer">
+            <span>En radios de afectación (INEI)</span>
+          </div>
+        </article>
+      </section>
+
+      <!-- Panel de Trabajo: Filtros y Mapa Georreferenciado -->
+      <section class="workspace-grid">
+        
+        <!-- Sidebar de Filtros -->
+        <aside class="glass-panel filters-sidebar" aria-label="Panel de filtros">
+          <div class="sidebar-title">
+            <span>Filtros y Búsqueda</span>
+            <button class="reset-filter-btn" id="btn-reset-filters">Restablecer</button>
+          </div>
+
+          <!-- Búsqueda por texto -->
+          <div class="filter-group">
+            <label class="filter-label" for="filter-search">Buscar Referencia o Código</label>
+            <input type="text" id="filter-search" class="input-styled" placeholder="Ej. Oxapampa, Lima, 2026-716..." />
+          </div>
+
+          <!-- Magnitud Mínima -->
+          <div class="filter-group">
+            <div class="filter-label">
+              <span>Magnitud Mínima</span>
+              <span class="value-badge" id="val-mag">Todas</span>
+            </div>
+            <input type="range" id="filter-mag" class="slider-input" min="0" max="7" step="0.5" value="0" />
+            <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted);">
+              <span>0 (Todos)</span>
+              <span>4.0</span>
+              <span>5.0</span>
+              <span>7.0+</span>
+            </div>
+          </div>
+
+          <!-- Profundidad Epicentral -->
+          <div class="filter-group">
+            <label class="filter-label">Profundidad</label>
+            <div class="chips-group" id="depth-chips">
+              <button class="chip-btn chip-depth active" data-depth="ALL">Todas</button>
+              <button class="chip-btn chip-depth" data-depth="Superficial" style="--accent-chip: #ef4444;">Superficial (&lt;60km)</button>
+              <button class="chip-btn chip-depth" data-depth="Intermedio" style="--accent-chip: #f59e0b;">Intermedio</button>
+              <button class="chip-btn chip-depth" data-depth="Profundo" style="--accent-chip: #06b6d4;">Profundo (&gt;300km)</button>
+            </div>
+          </div>
+
+          <!-- Departamento -->
+          <div class="filter-group">
+            <label class="filter-label" for="filter-dept">Departamento</label>
+            <select id="filter-dept" class="select-styled"></select>
+          </div>
+
+          <!-- Rango Temporal -->
+          <div class="filter-group">
+            <label class="filter-label">Período de Tiempo</label>
+            <div class="chips-group" id="date-chips">
+              <button class="chip-btn chip-date active" data-preset="ALL">Histórico</button>
+              <button class="chip-btn chip-date" data-preset="24h">24 Horas</button>
+              <button class="chip-btn chip-date" data-preset="7d">7 Días</button>
+              <button class="chip-btn chip-date" data-preset="30d">30 Días</button>
+            </div>
+            <div class="date-grid" style="margin-top: 0.5rem;">
+              <input type="date" id="filter-date-start" class="input-styled" style="font-size:0.75rem;" title="Fecha inicio" />
+              <input type="date" id="filter-date-end" class="input-styled" style="font-size:0.75rem;" title="Fecha fin" />
+            </div>
+          </div>
+
+          <!-- Estado del Backend -->
+          <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-subtle); font-size: 0.72rem; color: var(--text-muted);" id="badge-backend-status">
+            <span class="pulse-dot warning"></span> Modo Demostración Activo
+          </div>
+        </aside>
+
+        <!-- Mapa Interactivo Leaflet -->
+        <div class="glass-panel map-panel">
+          
+          <!-- Toolbar Superior del Mapa -->
+          <div class="map-toolbar">
+            <button class="map-control-pill" id="btn-toggle-wms-inei" title="Capa WMS de Límites Distritales Oficiales">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="9" y1="3" x2="9" y2="21"></line>
+              </svg>
+              Límites INEI (WMS)
+            </button>
+            <button class="map-control-pill" id="btn-reset-map" title="Restablecer vista a todo el territorio nacional">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="1 4 1 10 7 10"></polyline>
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+              </svg>
+              Recentrar
+            </button>
+          </div>
+
+          <!-- Contenedor del Mapa Leaflet -->
+          <div id="map-view" aria-label="Mapa de monitoreo geográfico de sismos"></div>
+
+          <!-- Leyenda del Mapa -->
+          <div class="map-legend">
+            <span class="legend-title">Profundidad del Epicentro</span>
+            <div class="legend-row">
+              <span class="legend-dot" style="background: var(--depth-shallow);"></span>
+              <span>Superficial (&lt; 60 km)</span>
+            </div>
+            <div class="legend-row">
+              <span class="legend-dot" style="background: var(--depth-intermediate);"></span>
+              <span>Intermedio (60 - 300 km)</span>
+            </div>
+            <div class="legend-row">
+              <span class="legend-dot" style="background: var(--depth-deep);"></span>
+              <span>Profundo (&gt; 300 km)</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel de Gráficos Analíticos -->
+      <section class="charts-grid" aria-label="Visualizaciones estadísticas">
+        <article class="glass-panel chart-card">
+          <div class="chart-card-header">
+            <h3 class="chart-card-title">Frecuencia Sísmica en el Tiempo</h3>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Eventos por Fecha</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="chart-timeline"></canvas>
+          </div>
+        </article>
+
+        <article class="glass-panel chart-card">
+          <div class="chart-card-header">
+            <h3 class="chart-card-title">Sismos por Departamento</h3>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Top Regiones</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="chart-departments"></canvas>
+          </div>
+        </article>
+      </section>
+
+      <section class="charts-row-secondary">
+        <article class="glass-panel chart-card">
+          <div class="chart-card-header">
+            <h3 class="chart-card-title">Distribución por Rango de Magnitud</h3>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Escala de Richter</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="chart-magnitudes"></canvas>
+          </div>
+        </article>
+
+        <article class="glass-panel chart-card">
+          <div class="chart-card-header">
+            <h3 class="chart-card-title">Estratificación por Profundidad</h3>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Corte Litosférico</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="chart-depths"></canvas>
+          </div>
+        </article>
+      </section>
+
+      <!-- Tabla Detallada de Eventos Sísmicos -->
+      <section class="glass-panel table-panel" aria-label="Listado tabular de eventos">
+        <div class="table-header-bar">
+          <div>
+            <h3 style="font-size: 1.05rem; font-weight: 700;">Registro Detallado de Eventos Sísmicos</h3>
+            <p style="font-size: 0.75rem; color: var(--text-muted);">Haga clic en una fila para centrar el mapa y visualizar el detalle integrado tri-fuente (SOA).</p>
+          </div>
+          <div class="table-actions">
+            <button class="btn-secondary" id="btn-export-csv" title="Descargar registros filtrados en formato CSV">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Exportar CSV
+            </button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Magnitud</th>
+                <th>Fecha y Hora</th>
+                <th>Profundidad</th>
+                <th>Referencia Geográfica</th>
+                <th>Departamento</th>
+                <th>Epicentro</th>
+                <th style="text-align: right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="table-sismos-body">
+              <!-- Renderizado dinámico vía JavaScript -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pagination-bar">
+          <span id="pagination-info">Cargando registros...</span>
+          <div class="pagination-controls">
+            <button class="page-btn" id="btn-page-prev">Anterior</button>
+            <button class="page-btn" id="btn-page-next">Siguiente</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Modal de Detalle Integrado Tri-Fuente (SOA) -->
+    <div class="modal-backdrop" id="modal-event-detail" role="dialog" aria-modal="true" aria-labelledby="modal-sismo-title">
+      <div class="detail-modal">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <span class="badge-magnitude mag-high" id="modal-mag-badge">M --</span>
+            <div>
+              <h2 id="modal-sismo-title" style="font-size: 1.15rem; font-weight: 700;">Detalle Integrado del Evento</h2>
+              <span id="modal-fechahora" style="font-size: 0.75rem; color: var(--text-muted);">--</span>
+            </div>
+          </div>
+          <button class="modal-close-btn" id="btn-close-modal" aria-label="Cerrar ventana">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          
+          <!-- Banner de Evaluación de Impacto Integrado -->
+          <div class="impact-banner">
+            <div class="impact-metric">
+              <span class="impact-metric-label">Radio de Afectación Estimado</span>
+              <span class="impact-metric-val" id="det-impacto-radio">-- km</span>
+            </div>
+            <div class="impact-metric">
+              <span class="impact-metric-label">Población Expuesta Estimada</span>
+              <span class="impact-metric-val" id="det-impacto-pob" style="color: #38bdf8;">-- hab.</span>
+            </div>
+            <div class="impact-metric">
+              <span class="impact-metric-label">Nivel de Alerta Calculado</span>
+              <span class="impact-metric-val" id="det-impacto-alerta" style="color: #f59e0b;">MODERADO</span>
+            </div>
+          </div>
+
+          <!-- Los 3 Pilares de la Arquitectura Orientada a Servicios -->
+          <div class="soa-pillars-grid">
+            
+            <!-- Pilar 1: IGP -->
+            <div class="pillar-card pillar-igp">
+              <div class="pillar-header">
+                <span class="pillar-name" style="color: var(--accent-igp);">1. IGP (Sismicidad)</span>
+                <span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; background: rgba(239, 68, 68, 0.15); color: #f87171;">ArcGIS REST</span>
+              </div>
+              <div class="pillar-data-list">
+                <div class="data-row">
+                  <span class="label">Código Evento</span>
+                  <span class="val" id="det-igp-codigo">--</span>
+                </div>
+                <div class="data-row">
+                  <span class="label">Profundidad</span>
+                  <span class="val" id="det-igp-prof">--</span>
+                </div>
+                <div class="data-row">
+                  <span class="label">Coordenadas</span>
+                  <span class="val" id="det-igp-coords">--</span>
+                </div>
+                <div class="data-row">
+                  <span class="label">Medio Epicentro</span>
+                  <span class="val" id="det-igp-epicentro">--</span>
+                </div>
+                <div class="data-row">
+                  <span class="label">Intensidad</span>
+                  <span class="val" id="det-igp-intensidad">--</span>
+                </div>
+                <div class="data-row">
+                  <span class="label">Sentido Población</span>
+                  <span class="val" id="det-igp-sentido">--</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pilar 2: SENAMHI -->
+            <div class="pillar-card pillar-senamhi">
+              <div class="pillar-header">
+                <span class="pillar-name" style="color: var(--accent-senamhi);">2. SENAMHI (Clima)</span>
+                <span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; background: rgba(59, 130, 246, 0.15); color: #60a5fa;">OGC WFS</span>
+              </div>
+              <div class="pillar-data-list">
+                <div class="data-row">
+                  <span class="label">Precipitación</span>
+                  <span class="val" id="det-sen-rango">--</span>
+                </div>
+                <div class="data-row">
+                  <span class="label">Nivel de Lluvia</span>
+                  <span class="val" id="det-sen-nivel">--</span>
+                </div>
+                <div class="data-row">
+                  <span class="label">Capa Meteorológica</span>
+                  <span class="val" id="det-sen-capa" style="font-size: 0.72rem;">--</span>
+                </div>
+                <div class="data-row">
+                  <span class="label">Origen Dato</span>
+                  <span class="val" id="det-sen-origen">--</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pilar 3: INEI -->
+            <div class="pillar-card pillar-inei">
+              <div class="pillar-header">
+                <span class="pillar-name" style="color: var(--accent-inei);">3. INEI (Demografía)</span>
+                <span style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; background: rgba(16, 185, 129, 0.15); color: #34d399;">OGC WFS/Caché</span>
+              </div>
+              <div class="pillar-data-list">
+                <div class="data-row">
+                  <span class="label">Ubigeo</span>
+                  <span class="val" id="det-inei-ubigeo">--</span>
+                </div>
+                <div class="data-row">
+                  <span class="label">Distrito Epicentro</span>
+                  <span class="val" id="det-inei-distrito">--</span>
+                </div>
+                <div class="data-row">
+                  <span class="label">Provincia</span>
+                  <span class="val" id="det-inei-provincia">--</span>
+                </div>
+                <div class="data-row">
+                  <span class="label">Población Distrital</span>
+                  <span class="val" id="det-inei-pob-dist">--</span>
+                </div>
+                <div class="data-row">
+                  <span class="label">Densidad Poblacional</span>
+                  <span class="val" id="det-inei-densidad">--</span>
+                </div>
+                <div style="font-size: 0.68rem; color: #f59e0b; margin-top: 0.2rem;" id="det-inei-status">
+                  --
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <div class="sync-metadata">
+            <span class="pulse-dot"></span>
+            <span id="det-sync-time">Orquestado por GeoSOA</span>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn-secondary" id="btn-modal-center-map" style="background: var(--accent-primary); color: #0b111e; font-weight: 600;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              Centrar y Ver Radio en Mapa
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Librerías de Terceros (Leaflet & Chart.js) -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Script Modular Principal (se vinculará en la Etapa 8 según la guía paso a paso) -->
+  <!-- <script type="module" src="js/principal.js"></script> -->
+</body>
+</html>
