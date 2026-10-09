@@ -3,11 +3,11 @@
   "name": "IGP",
   "requests": [
     {
-      "id": "8324c7b216e4",
-      "name": "Último sismo",
+      "id": "11310c941461",
+      "name": "Último sismo con coordenadas",
       "method": "GET",
       "url": "{{igp_url}}/UltimoSismo/MapServer/0/query",
-      "description": "Último sismo reportado (IgpAdapter.ultimoSismo)",
+      "description": "Último sismo reportado con latitud y longitud del epicentro (IgpAdapter.ultimoSismo)",
       "params": [
         {
           "enabled": true,
@@ -17,7 +17,7 @@
         {
           "enabled": true,
           "key": "outFields",
-          "value": "fecha_local,hora_local,magnitud,profundidad,referencia,intensidad"
+          "value": "fecha_local,hora_local,magnitud,profundidad,latitud,longitud,referencia"
         },
         {
           "enabled": true,
@@ -36,8 +36,8 @@
         "type": "none"
       },
       "body": null,
-      "created_at": "2026-10-09T05:44:49Z",
-      "updated_at": "2026-10-09T05:54:22Z"
+      "created_at": "2026-10-09T20:17:05Z",
+      "updated_at": "2026-10-09T20:19:24Z"
     },
     {
       "id": "d36d6f779229",
@@ -174,38 +174,6 @@
       "body": null,
       "created_at": "2026-10-09T05:44:50Z",
       "updated_at": "2026-10-09T05:44:50Z"
-    },
-    {
-      "id": "6228472303ed",
-      "name": "Error con HTTP 200 (campo inexistente)",
-      "method": "GET",
-      "url": "{{igp_url}}/SismosReportados/MapServer/0/query",
-      "description": "ArcGIS responde 200 con un objeto \"error\"; por eso IgpAdapter revisa el cuerpo",
-      "params": [
-        {
-          "enabled": true,
-          "key": "where",
-          "value": "campo_que_no_existe > 0"
-        },
-        {
-          "enabled": true,
-          "key": "outFields",
-          "value": "*"
-        },
-        {
-          "enabled": true,
-          "key": "f",
-          "value": "json"
-        }
-      ],
-      "path_params": [],
-      "headers": [],
-      "auth": {
-        "type": "none"
-      },
-      "body": null,
-      "created_at": "2026-10-09T05:54:24Z",
-      "updated_at": "2026-10-09T05:54:24Z"
     }
   ]
 }
