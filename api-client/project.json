@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "name": "SOA-SERV",
+  "base_url": "http://localhost:8080",
+  "active_environment": "local",
+  "variables": {
+    "igp_url": "https://ide.igp.gob.pe/arcgis/rest/services/monitoreocensis"
+  },
+  "environments": {
+    "local": {
+      "base_url": "http://localhost:8080"
+    }
+  },
+  "collections": [
+    "igp"
+  ]
+}
