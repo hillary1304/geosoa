@@ -75,7 +75,7 @@ geosoa
 **Requisitos:** Java 21, Node.js 22 LTS o superior, Docker.
 
 ```bash
-# Base de datos
+# Base de datos (Docker)
 docker compose up -d
 
 # Backend
@@ -87,6 +87,8 @@ cd frontend
 npm install
 npm run dev
 ```
+
+En Windows sin Docker, ejecutar `scripts\setup-mysql.cmd`: verifica que MySQL esté instalado (si no, lo instala con winget) y en ejecución, se conecta como `root` sin contraseña o pide credenciales, y crea la base `geosoa` y el usuario `soauser` si no existen.
 
 | Servicio | Valor |
 |---|---|
