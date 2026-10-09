@@ -10,12 +10,16 @@
   },
   "environments": {
     "local": {
-      "base_url": "http://localhost:8080"
+      "base_url": "http://localhost:8080",
+      "latitud": "-16.27",
+      "longitud": "-72.26",
+      "radio_km": "5"
     }
   },
   "collections": [
     "igp",
     "senamhi",
-    "inei"
+    "inei",
+    "orquestacion"
   ]
 }
