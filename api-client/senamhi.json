@@ -1,0 +1,266 @@
+{
+  "id": "senamhi",
+  "name": "SENAMHI",
+  "requests": [
+    {
+      "id": "e197c3db384e",
+      "name": "Precipitación anual en Aplao (sismo IGP 2026-717)",
+      "method": "GET",
+      "url": "{{senamhi_url}}/g_05_02/ows",
+      "description": "Capa ANUAL en el epicentro del sismo filtrado en la colección IGP",
+      "params": [
+        {
+          "enabled": true,
+          "key": "service",
+          "value": "WFS"
+        },
+        {
+          "enabled": true,
+          "key": "version",
+          "value": "1.0.0"
+        },
+        {
+          "enabled": true,
+          "key": "request",
+          "value": "GetFeature"
+        },
+        {
+          "enabled": true,
+          "key": "typeName",
+          "value": "g_05_02:05_02_013_03_001_512_0000_00_00"
+        },
+        {
+          "enabled": true,
+          "key": "outputFormat",
+          "value": "application/json"
+        },
+        {
+          "enabled": true,
+          "key": "propertyName",
+          "value": "rango"
+        },
+        {
+          "enabled": true,
+          "key": "CQL_FILTER",
+          "value": "INTERSECTS(geom,POINT(-72.74 -16.19))"
+        }
+      ],
+      "path_params": [],
+      "headers": [],
+      "auth": {
+        "type": "none"
+      },
+      "body": null,
+      "created_at": "2026-10-09T06:09:37Z",
+      "updated_at": "2026-10-09T06:09:37Z"
+    },
+    {
+      "id": "5c34340e77d9",
+      "name": "Precipitación anual en Quincemil (rango abierto)",
+      "method": "GET",
+      "url": "{{senamhi_url}}/g_05_02/ows",
+      "description": "Quincemil (Cusco), de las zonas más lluviosas: rango abierto \"> 6000\" sin máximo",
+      "params": [
+        {
+          "enabled": true,
+          "key": "service",
+          "value": "WFS"
+        },
+        {
+          "enabled": true,
+          "key": "version",
+          "value": "1.0.0"
+        },
+        {
+          "enabled": true,
+          "key": "request",
+          "value": "GetFeature"
+        },
+        {
+          "enabled": true,
+          "key": "typeName",
+          "value": "g_05_02:05_02_013_03_001_512_0000_00_00"
+        },
+        {
+          "enabled": true,
+          "key": "outputFormat",
+          "value": "application/json"
+        },
+        {
+          "enabled": true,
+          "key": "propertyName",
+          "value": "rango"
+        },
+        {
+          "enabled": true,
+          "key": "CQL_FILTER",
+          "value": "INTERSECTS(geom,POINT(-70.75 -13.23))"
+        }
+      ],
+      "path_params": [],
+      "headers": [],
+      "auth": {
+        "type": "none"
+      },
+      "body": null,
+      "created_at": "2026-10-09T06:09:37Z",
+      "updated_at": "2026-10-09T06:09:57Z"
+    },
+    {
+      "id": "e5854d29c5ec",
+      "name": "Precipitación de febrero en Cusco",
+      "method": "GET",
+      "url": "{{senamhi_url}}/g_05_02/ows",
+      "description": "Capa mensual (FEBRERO = 002), elegida con CapaPrecipitacion",
+      "params": [
+        {
+          "enabled": true,
+          "key": "service",
+          "value": "WFS"
+        },
+        {
+          "enabled": true,
+          "key": "version",
+          "value": "1.0.0"
+        },
+        {
+          "enabled": true,
+          "key": "request",
+          "value": "GetFeature"
+        },
+        {
+          "enabled": true,
+          "key": "typeName",
+          "value": "g_05_02:05_02_002_03_001_512_0000_00_00"
+        },
+        {
+          "enabled": true,
+          "key": "outputFormat",
+          "value": "application/json"
+        },
+        {
+          "enabled": true,
+          "key": "propertyName",
+          "value": "rango"
+        },
+        {
+          "enabled": true,
+          "key": "CQL_FILTER",
+          "value": "INTERSECTS(geom,POINT(-71.97 -13.53))"
+        }
+      ],
+      "path_params": [],
+      "headers": [],
+      "auth": {
+        "type": "none"
+      },
+      "body": null,
+      "created_at": "2026-10-09T06:09:37Z",
+      "updated_at": "2026-10-09T06:09:37Z"
+    },
+    {
+      "id": "40c4da3b10d1",
+      "name": "Punto en el mar (sin cobertura)",
+      "method": "GET",
+      "url": "{{senamhi_url}}/g_05_02/ows",
+      "description": "Sin features: el adaptador devuelve Optional vacío",
+      "params": [
+        {
+          "enabled": true,
+          "key": "service",
+          "value": "WFS"
+        },
+        {
+          "enabled": true,
+          "key": "version",
+          "value": "1.0.0"
+        },
+        {
+          "enabled": true,
+          "key": "request",
+          "value": "GetFeature"
+        },
+        {
+          "enabled": true,
+          "key": "typeName",
+          "value": "g_05_02:05_02_013_03_001_512_0000_00_00"
+        },
+        {
+          "enabled": true,
+          "key": "outputFormat",
+          "value": "application/json"
+        },
+        {
+          "enabled": true,
+          "key": "propertyName",
+          "value": "rango"
+        },
+        {
+          "enabled": true,
+          "key": "CQL_FILTER",
+          "value": "INTERSECTS(geom,POINT(-79.5 -12.5))"
+        }
+      ],
+      "path_params": [],
+      "headers": [],
+      "auth": {
+        "type": "none"
+      },
+      "body": null,
+      "created_at": "2026-10-09T06:09:38Z",
+      "updated_at": "2026-10-09T06:09:38Z"
+    },
+    {
+      "id": "b5a92fae8efc",
+      "name": "Error XML con HTTP 200 (capa inexistente)",
+      "method": "GET",
+      "url": "{{senamhi_url}}/g_05_02/ows",
+      "description": "GeoServer responde 200 con XML de error aunque se pida JSON",
+      "params": [
+        {
+          "enabled": true,
+          "key": "service",
+          "value": "WFS"
+        },
+        {
+          "enabled": true,
+          "key": "version",
+          "value": "1.0.0"
+        },
+        {
+          "enabled": true,
+          "key": "request",
+          "value": "GetFeature"
+        },
+        {
+          "enabled": true,
+          "key": "typeName",
+          "value": "g_05_02:capa_que_no_existe"
+        },
+        {
+          "enabled": true,
+          "key": "outputFormat",
+          "value": "application/json"
+        },
+        {
+          "enabled": true,
+          "key": "propertyName",
+          "value": "rango"
+        },
+        {
+          "enabled": true,
+          "key": "CQL_FILTER",
+          "value": "INTERSECTS(geom,POINT(-72.74 -16.19))"
+        }
+      ],
+      "path_params": [],
+      "headers": [],
+      "auth": {
+        "type": "none"
+      },
+      "body": null,
+      "created_at": "2026-10-09T06:09:38Z",
+      "updated_at": "2026-10-09T06:09:38Z"
+    }
+  ]
+}
