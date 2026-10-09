@@ -4,7 +4,8 @@
   "base_url": "http://localhost:8080",
   "active_environment": "local",
   "variables": {
-    "igp_url": "https://ide.igp.gob.pe/arcgis/rest/services/monitoreocensis"
+    "igp_url": "https://ide.igp.gob.pe/arcgis/rest/services/monitoreocensis",
+    "senamhi_url": "https://idesep.senamhi.gob.pe/geoserver"
   },
   "environments": {
     "local": {
@@ -12,6 +13,7 @@
     }
   },
   "collections": [
-    "igp"
+    "igp",
+    "senamhi"
   ]
 }
