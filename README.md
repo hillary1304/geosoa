@@ -30,7 +30,7 @@ Por su ubicación en el Cinturón de Fuego del Pacífico y la geografía de los 
 
 ```mermaid
 flowchart LR
-    U[Usuario] --> FE[Dashboard web<br/>HTML · CSS · JS]
+    U[Usuario] --> FE[Dashboard web<br/>React 19 · TS · Vite]
     FE -- HTTP/JSON --> API[API REST<br/>Spring Boot]
     API --> ORQ[Servicio orquestador]
     ORQ --> CACHE[(Caché y MySQL)]
@@ -53,7 +53,7 @@ flowchart LR
 | Componente | Tecnología |
 |---|---|
 | Backend | Java 21, Spring Boot 4.1, Maven |
-| Frontend | HTML, CSS, JavaScript, Leaflet, Chart.js |
+| Frontend | React 19, TypeScript, Vite, TanStack Query, Leaflet, Recharts |
 | Base de datos | MySQL 8.4 |
 | Servicios internos | REST sobre HTTP/HTTPS, JSON |
 | Servicio sísmico | ArcGIS REST (IGP) |
@@ -65,14 +65,14 @@ flowchart LR
 ```
 geosoa
 ├── backend       API REST (Spring Boot)
-├── frontend      Dashboard web
+├── frontend      Dashboard web (React + Vite)
 ├── docs          Documentación del proyecto
 └── compose.yaml  Base de datos MySQL
 ```
 
 ## Ejecución local
 
-**Requisitos:** Java 21, Docker.
+**Requisitos:** Java 21, Node.js 22 LTS o superior, Docker.
 
 ```bash
 # Base de datos
@@ -81,12 +81,18 @@ docker compose up -d
 # Backend
 cd backend
 ./mvnw spring-boot:run
+
+# Frontend (en otra terminal)
+cd frontend
+npm install
+npm run dev
 ```
 
 | Servicio | Valor |
 |---|---|
 | MySQL | `localhost:3306`, base `geosoa`, usuario `soauser` |
 | Backend | `http://localhost:8080` |
+| Frontend | `http://localhost:5173` |
 
 ## Documentación
 

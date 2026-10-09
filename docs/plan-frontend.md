@@ -73,14 +73,14 @@ En desarrollo, Vite redirige `/api` y `/actuator` a `http://localhost:8080` medi
 
 **Objetivo:** tener el proyecto React configurado y el layout del dashboard.
 
-- [ ] Crear el proyecto en `frontend` con Vite (plantilla `react-ts`) e instalar las dependencias base.
-- [ ] Configurar ESLint, Prettier, Vitest y los scripts `dev`, `build`, `lint` y `test`.
-- [ ] Migrar las variables y estilos de `Frontend/css` a `src/styles`, con modo claro/oscuro.
-- [ ] Componentes del layout: encabezado, panel lateral de filtros, mapa, indicadores, gráficos y listado, sin datos.
-- [ ] Layout responsivo para móvil, tablet y escritorio.
-- [ ] Proxy de Vite hacia el backend y archivo `.env.example`.
-- [ ] Eliminar `Frontend/` e `iniciemos.js`, reemplazados por el proyecto de Vite.
-- [ ] Actualizar el README (tecnologías y cómo ejecutar el frontend).
+- [x] Crear el proyecto en `frontend` con Vite (plantilla `react-ts`) e instalar las dependencias base.
+- [x] Configurar ESLint, Prettier, Vitest y los scripts `dev`, `build`, `lint` y `test`.
+- [x] Migrar las variables y estilos de `Frontend/css` a `src/styles`, con modo claro/oscuro.
+- [x] Componentes del layout: encabezado, panel lateral de filtros, mapa, indicadores, gráficos y listado, sin datos.
+- [x] Layout responsivo para móvil, tablet y escritorio.
+- [x] Proxy de Vite hacia el backend y archivo `.env.example`.
+- [x] Eliminar `Frontend/` e `iniciemos.js`, reemplazados por el proyecto de Vite.
+- [x] Actualizar el README (tecnologías y cómo ejecutar el frontend).
 
 **Entregable:** dashboard base responsivo en React, sin datos.
 
