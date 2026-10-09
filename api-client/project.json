@@ -5,7 +5,8 @@
   "active_environment": "local",
   "variables": {
     "igp_url": "https://ide.igp.gob.pe/arcgis/rest/services/monitoreocensis",
-    "senamhi_url": "https://idesep.senamhi.gob.pe/geoserver"
+    "senamhi_url": "https://idesep.senamhi.gob.pe/geoserver",
+    "inei_url": "https://geoespacial.inei.gob.pe/geoserver/Interoperabilidad"
   },
   "environments": {
     "local": {
@@ -14,6 +15,7 @@
   },
   "collections": [
     "igp",
-    "senamhi"
+    "senamhi",
+    "inei"
   ]
 }
