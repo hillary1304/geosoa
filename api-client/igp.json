@@ -1,0 +1,179 @@
+{
+  "id": "igp",
+  "name": "IGP",
+  "requests": [
+    {
+      "id": "11310c941461",
+      "name": "Último sismo con coordenadas",
+      "method": "GET",
+      "url": "{{igp_url}}/UltimoSismo/MapServer/0/query",
+      "description": "Último sismo reportado con latitud y longitud del epicentro (IgpAdapter.ultimoSismo)",
+      "params": [
+        {
+          "enabled": true,
+          "key": "where",
+          "value": "1=1"
+        },
+        {
+          "enabled": true,
+          "key": "outFields",
+          "value": "fecha_local,hora_local,magnitud,profundidad,latitud,longitud,referencia"
+        },
+        {
+          "enabled": true,
+          "key": "returnGeometry",
+          "value": "false"
+        },
+        {
+          "enabled": true,
+          "key": "f",
+          "value": "json"
+        }
+      ],
+      "path_params": [],
+      "headers": [],
+      "auth": {
+        "type": "none"
+      },
+      "body": null,
+      "created_at": "2026-10-09T20:17:05Z",
+      "updated_at": "2026-10-09T20:19:24Z"
+    },
+    {
+      "id": "d36d6f779229",
+      "name": "Sismos reportados (últimos 5)",
+      "method": "GET",
+      "url": "{{igp_url}}/SismosReportados/MapServer/0/query",
+      "description": "Primeros 10 sismos sin filtros, del más reciente al más antiguo",
+      "params": [
+        {
+          "enabled": true,
+          "key": "where",
+          "value": "fechaevento IS NOT NULL"
+        },
+        {
+          "enabled": true,
+          "key": "outFields",
+          "value": "code,fechaevento,magnitud,prof,profundidad,departamento,ref"
+        },
+        {
+          "enabled": true,
+          "key": "orderByFields",
+          "value": "fechaevento DESC"
+        },
+        {
+          "enabled": true,
+          "key": "resultOffset",
+          "value": "0"
+        },
+        {
+          "enabled": true,
+          "key": "resultRecordCount",
+          "value": "5"
+        },
+        {
+          "enabled": true,
+          "key": "returnGeometry",
+          "value": "false"
+        },
+        {
+          "enabled": true,
+          "key": "f",
+          "value": "json"
+        }
+      ],
+      "path_params": [],
+      "headers": [],
+      "auth": {
+        "type": "none"
+      },
+      "body": null,
+      "created_at": "2026-10-09T05:44:49Z",
+      "updated_at": "2026-10-09T05:54:24Z"
+    },
+    {
+      "id": "07f215574418",
+      "name": "Sismos filtrados (oct 2026, M>=4, Arequipa)",
+      "method": "GET",
+      "url": "{{igp_url}}/SismosReportados/MapServer/0/query",
+      "description": "Filtros desde/magnitud/departamento; el día se toma en hora de Lima (05:00 UTC)",
+      "params": [
+        {
+          "enabled": true,
+          "key": "where",
+          "value": "fechaevento IS NOT NULL AND fechaevento >= TIMESTAMP '2026-10-01 05:00:00' AND magnitud >= 4 AND departamento = 'AREQUIPA'"
+        },
+        {
+          "enabled": true,
+          "key": "outFields",
+          "value": "code,fechaevento,magnitud,prof,profundidad,departamento,ref"
+        },
+        {
+          "enabled": true,
+          "key": "orderByFields",
+          "value": "fechaevento DESC"
+        },
+        {
+          "enabled": true,
+          "key": "resultOffset",
+          "value": "0"
+        },
+        {
+          "enabled": true,
+          "key": "resultRecordCount",
+          "value": "20"
+        },
+        {
+          "enabled": true,
+          "key": "returnGeometry",
+          "value": "false"
+        },
+        {
+          "enabled": true,
+          "key": "f",
+          "value": "json"
+        }
+      ],
+      "path_params": [],
+      "headers": [],
+      "auth": {
+        "type": "none"
+      },
+      "body": null,
+      "created_at": "2026-10-09T05:44:49Z",
+      "updated_at": "2026-10-09T05:54:23Z"
+    },
+    {
+      "id": "616d3c9ea4e3",
+      "name": "Conteo de sismos (M>=5)",
+      "method": "GET",
+      "url": "{{igp_url}}/SismosReportados/MapServer/0/query",
+      "description": "Conteo total (IgpAdapter.contarSismosReportados)",
+      "params": [
+        {
+          "enabled": true,
+          "key": "where",
+          "value": "fechaevento IS NOT NULL AND magnitud >= 5"
+        },
+        {
+          "enabled": true,
+          "key": "returnCountOnly",
+          "value": "true"
+        },
+        {
+          "enabled": true,
+          "key": "f",
+          "value": "json"
+        }
+      ],
+      "path_params": [],
+      "headers": [],
+      "auth": {
+        "type": "none"
+      },
+      "body": null,
+      "created_at": "2026-10-09T05:44:50Z",
+      "updated_at": "2026-10-09T05:44:50Z"
+    }
+  ]
+}

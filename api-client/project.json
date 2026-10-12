@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "name": "SOA-SERV",
+  "base_url": "http://localhost:8080",
+  "active_environment": "local",
+  "variables": {
+    "igp_url": "https://ide.igp.gob.pe/arcgis/rest/services/monitoreocensis",
+    "senamhi_url": "https://idesep.senamhi.gob.pe/geoserver",
+    "inei_url": "https://geoespacial.inei.gob.pe/geoserver/Interoperabilidad"
+  },
+  "environments": {
+    "local": {
+      "base_url": "http://localhost:8080",
+      "latitud": "-16.27",
+      "longitud": "-72.26",
+      "radio_km": "5"
+    }
+  },
+  "collections": [
+    "igp",
+    "senamhi",
+    "inei",
+    "orquestacion"
+  ]
+}

@@ -24,12 +24,12 @@ com.geosoa.backend
 
 **Objetivo:** dejar el proyecto listo para desarrollar y conectado a MySQL.
 
-- [ ] Agregar dependencias: `spring-boot-starter-validation`, `spring-boot-starter-data-jpa`, `mysql-connector-j`, `spring-boot-starter-cache`, `caffeine`, `spring-boot-starter-actuator`, `flyway-mysql`.
-- [ ] Configurar `application.properties` y perfiles `dev` y `test`.
-- [ ] Conectar con el MySQL de `compose.yaml` (`geosoa`, `soauser`).
-- [ ] Crear la estructura de paquetes.
-- [ ] Configurar CORS para el frontend.
-- [ ] Habilitar `/actuator/health`.
+- [x] Agregar dependencias: `spring-boot-starter-validation`, `spring-boot-starter-data-jpa`, `mysql-connector-j`, `spring-boot-starter-cache`, `caffeine`, `spring-boot-starter-actuator`, `flyway-mysql`.
+- [x] Configurar `application.properties` y perfiles `dev` y `test`.
+- [x] Conectar con el MySQL de `compose.yaml` (`geosoa`, `soauser`).
+- [x] Crear la estructura de paquetes.
+- [x] Configurar CORS para el frontend.
+- [x] Habilitar `/actuator/health`.
 
 **Entregable:** la aplicación arranca, conecta a MySQL y responde en `/actuator/health`.
 
@@ -37,10 +37,10 @@ com.geosoa.backend
 
 **Objetivo:** definir el formato común de datos y su almacenamiento.
 
-- [ ] Modelos de dominio: `Sismo`, `Precipitacion`, `Distrito`, `Poblacion`, `EventoIntegrado`.
-- [ ] Entidades JPA y repositorios para sismos y distritos.
-- [ ] Migraciones Flyway iniciales.
-- [ ] Manejo global de errores con `@RestControllerAdvice` y formato de error uniforme.
+- [x] Modelos de dominio: `Sismo`, `Precipitacion`, `Distrito`, `Poblacion`, `EventoIntegrado`.
+- [x] Entidades JPA y repositorios para sismos y distritos.
+- [x] Migraciones Flyway iniciales.
+- [x] Manejo global de errores con `@RestControllerAdvice` y formato de error uniforme.
 
 **Entregable:** esquema creado automáticamente al arrancar y pruebas de repositorio en verde.
 
@@ -48,12 +48,12 @@ com.geosoa.backend
 
 **Objetivo:** consumir y normalizar los sismos del IGP (ArcGIS REST).
 
-- [ ] Cliente HTTP con `RestClient`, URL base y timeouts configurables.
-- [ ] Consulta de `UltimoSismo` y de `SismosReportados` con filtros por fecha, magnitud y departamento, más paginación.
-- [ ] Conversión de `fechaevento` (epoch ms) a `America/Lima`.
-- [ ] Descartar registros con campos nulos.
-- [ ] Mapeo de la respuesta ArcGIS al modelo `Sismo`.
-- [ ] Pruebas con respuestas simuladas (`MockRestServiceServer`).
+- [x] Cliente HTTP con `RestClient`, URL base y timeouts configurables.
+- [x] Consulta de `UltimoSismo` y de `SismosReportados` con filtros por fecha, magnitud y departamento, más paginación.
+- [x] Conversión de `fechaevento` (epoch ms) a `America/Lima`.
+- [x] Descartar registros con campos nulos.
+- [x] Mapeo de la respuesta ArcGIS al modelo `Sismo`.
+- [x] Pruebas con respuestas simuladas (`MockRestServiceServer`).
 
 **Entregable:** `IgpAdapter` devuelve sismos normalizados.
 
@@ -61,11 +61,11 @@ com.geosoa.backend
 
 **Objetivo:** obtener la precipitación en una coordenada (OGC WFS).
 
-- [ ] Cliente WFS `GetFeature` con `CQL_FILTER=INTERSECTS(geom,POINT(lon lat))` y `propertyName=rango`.
-- [ ] Capa configurable (anual por defecto, opción mensual o estacional).
-- [ ] Interpretar `rango` (`"10 - 15"`) como mínimo y máximo en mm.
-- [ ] Manejar respuestas vacías (punto en el mar o sin cobertura).
-- [ ] Pruebas con respuestas simuladas.
+- [x] Cliente WFS `GetFeature` con `CQL_FILTER=INTERSECTS(geom,POINT(lon lat))` y `propertyName=rango`.
+- [x] Capa configurable (anual por defecto, opción mensual o estacional).
+- [x] Interpretar `rango` (`"10 - 15"`) como mínimo y máximo en mm.
+- [x] Manejar respuestas vacías (punto en el mar o sin cobertura).
+- [x] Pruebas con respuestas simuladas.
 
 **Entregable:** `SenamhiAdapter` devuelve la precipitación para una latitud y longitud.
 
@@ -73,12 +73,12 @@ com.geosoa.backend
 
 **Objetivo:** identificar el distrito y la población de una coordenada (OGC WFS).
 
-- [ ] Verificar los atributos de `ig_distrito` e `ig_pobtotal_dist` con `DescribeFeatureType`.
-- [ ] Consulta del distrito por punto (Ubigeo, departamento, provincia, distrito).
-- [ ] Consulta de población y densidad por Ubigeo.
-- [ ] Consulta de distritos dentro de un radio (bbox + filtro por distancia).
-- [ ] Persistir los límites distritales en MySQL como respaldo, porque el servicio presenta caídas.
-- [ ] Pruebas con respuestas simuladas.
+- [x] Verificar los atributos de `ig_distrito` e `ig_pobtotal_dist` con `DescribeFeatureType`.
+- [x] Consulta del distrito por punto (Ubigeo, departamento, provincia, distrito).
+- [x] Consulta de población y densidad por Ubigeo.
+- [x] Consulta de distritos dentro de un radio (bbox + filtro por distancia).
+- [x] Persistir los límites distritales en MySQL como respaldo, porque el servicio presenta caídas.
+- [x] Pruebas con respuestas simuladas.
 
 **Entregable:** `IneiAdapter` devuelve el distrito y la población para una coordenada o radio.
 
@@ -86,12 +86,12 @@ com.geosoa.backend
 
 **Objetivo:** combinar las tres fuentes en una vista integrada del evento.
 
-- [ ] `OrquestadorService` que, dado un sismo, consulte en paralelo a SENAMHI e INEI.
-- [ ] Calcular el radio de afectación según magnitud y profundidad.
-- [ ] Estimar la población expuesta sumando los distritos dentro del radio.
-- [ ] Construir `EventoIntegrado` con el sismo, el distrito, la precipitación y la población.
-- [ ] Respuesta parcial cuando una fuente no responde, indicando qué fuente faltó.
-- [ ] Pruebas unitarias del orquestador.
+- [x] `OrquestadorService` que, dado un sismo, consulte en paralelo a SENAMHI e INEI.
+- [x] Calcular el radio de afectación según magnitud y profundidad.
+- [x] Estimar la población expuesta sumando los distritos dentro del radio.
+- [x] Construir `EventoIntegrado` con el sismo, el distrito, la precipitación y la población.
+- [x] Respuesta parcial cuando una fuente no responde, indicando qué fuente faltó.
+- [x] Pruebas unitarias del orquestador.
 
 **Entregable:** un evento integrado completo a partir de un sismo del IGP.
 
@@ -99,12 +99,12 @@ com.geosoa.backend
 
 **Objetivo:** mantener el servicio disponible ante caídas de las APIs del Estado.
 
-- [ ] Caché en memoria con Caffeine por fuente y TTL configurable (IGP corto; SENAMHI e INEI largo).
-- [ ] Reintentos con espera y circuit breaker por adaptador (Resilience4j).
-- [ ] Respaldo en MySQL: si la fuente falla, servir el último dato almacenado.
-- [ ] Tarea programada (`@Scheduled`) para sincronizar sismos recientes.
-- [ ] Incluir en las respuestas la procedencia del dato (`origen`: `live`, `cache` o `db`) y su fecha de actualización.
-- [ ] Indicador de estado de cada fuente externa en Actuator.
+- [x] Caché en memoria con Caffeine por fuente y TTL configurable (IGP corto; SENAMHI e INEI largo).
+- [x] Reintentos con espera y circuit breaker por adaptador (Resilience4j).
+- [x] Respaldo en MySQL: si la fuente falla, servir el último dato almacenado.
+- [x] Tarea programada (`@Scheduled`) para sincronizar sismos recientes.
+- [x] Incluir en las respuestas la procedencia del dato (`origen`: `live`, `cache` o `db`) y su fecha de actualización.
+- [x] Indicador de estado de cada fuente externa en Actuator.
 
 **Entregable:** el sistema sigue respondiendo con datos almacenados con una fuente caída.
 
