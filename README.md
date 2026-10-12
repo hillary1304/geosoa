@@ -28,33 +28,66 @@ Por su ubicación en el Cinturón de Fuego del Pacífico y la geografía de los 
 
 ## Arquitectura
 
+### Vista general
+
 ```mermaid
 flowchart LR
-    U[Usuario] --> FE[Dashboard web<br/>React 19 · TypeScript · Vite]
+    U[Usuario] --> FE[Dashboard web<br/>React · TypeScript · Vite]
     FE -- HTTP/JSON --> API[API REST<br/>Spring Boot]
     API --> ORQ[Servicio orquestador]
-    subgraph RES[Capa de resiliencia: caché · reintentos · circuit breaker]
-        AIGP[Adaptador IGP]
-        ASEN[Adaptador SENAMHI]
-        AINEI[Adaptador INEI]
-    end
-    ORQ -- 1. sismo --> AIGP
-    ORQ -- 2. epicentro --> ASEN
-    ORQ -- 2. epicentro --> AINEI
-    AIGP -- ArcGIS REST --> IGP[IGP<br/>Sismos]
-    ASEN -- WFS --> SEN[SENAMHI<br/>Precipitación]
-    AINEI -- WFS --> INEI[INEI<br/>Límites y población]
-    RES -. respaldo .-> DB[(MySQL)]
-    SYNC[Sincronización programada] -- sismos recientes --> DB
+    ORQ --> AD[Adaptadores<br/>IGP · SENAMHI · INEI]
+    AD --> EXT[Servicios del Estado<br/>ArcGIS REST · WFS]
+    AD -. respaldo .-> DB[(MySQL)]
 ```
 
-1. El dashboard solicita información al backend.
-2. El orquestador obtiene el sismo del IGP a través de su adaptador.
-3. Con las coordenadas del epicentro, consulta en paralelo al SENAMHI (precipitación) y al INEI (distrito del epicentro y distritos dentro del radio de afectación, con su población).
-4. Cada adaptador transforma la respuesta de su fuente al modelo de dominio común.
-5. El orquestador consolida el evento: sismo, distrito, precipitación, población y población expuesta, indicando qué fuentes faltaron y de dónde provino cada dato (en vivo, caché o MySQL).
-6. Cada consulta pasa por la capa de resiliencia: primero la caché, luego la fuente en vivo con reintentos y circuit breaker, y por último el respaldo en MySQL (IGP e INEI; el SENAMHI solo cuenta con la caché).
-7. Una tarea programada sincroniza periódicamente los sismos recientes del IGP en MySQL para servirlos ante una caída.
+El dashboard consulta la API REST del backend. El orquestador obtiene los datos de cada fuente mediante su adaptador, que transforma la respuesta al modelo de dominio común, y devuelve el evento consolidado en JSON.
+
+### Orquestación de un evento
+
+```mermaid
+sequenceDiagram
+    participant O as Orquestador
+    participant IGP as Adaptador IGP
+    participant SEN as Adaptador SENAMHI
+    participant INEI as Adaptador INEI
+    O->>IGP: último sismo
+    IGP-->>O: sismo (epicentro, magnitud, profundidad)
+    Note over O: calcula el radio de afectación
+    par En paralelo
+        O->>SEN: precipitación en el epicentro
+    and
+        O->>INEI: distrito del epicentro
+    and
+        O->>INEI: distritos dentro del radio
+    end
+    SEN-->>O: precipitación
+    INEI-->>O: distrito y distritos con población
+    Note over O: suma la población expuesta y arma el evento integrado
+```
+
+1. El orquestador obtiene el sismo del IGP.
+2. Con la magnitud y la profundidad calcula el radio de afectación.
+3. Con las coordenadas del epicentro consulta en paralelo al SENAMHI y al INEI.
+4. Si la población del distrito del epicentro no vino en el radio, la consulta aparte al INEI.
+5. Devuelve el evento integrado con las fuentes que faltaron y la procedencia de cada dato (en vivo, caché o MySQL).
+
+### Resiliencia ante caídas
+
+```mermaid
+flowchart TD
+    C[Consulta a una fuente] --> CA{¿Está en caché?}
+    CA -- Sí --> R1[Responde desde caché]
+    CA -- No --> V[Fuente en vivo<br/>reintentos y circuit breaker]
+    V -- Responde --> R2[Guarda en caché y responde]
+    V -- Falla --> M{¿Hay respaldo en MySQL?}
+    M -- Sí --> R3[Responde desde MySQL]
+    M -- No --> F[Fuente marcada como faltante]
+```
+
+- IGP e INEI tienen respaldo en MySQL; el SENAMHI solo cuenta con la caché.
+- Una tarea programada sincroniza periódicamente los sismos recientes del IGP en MySQL.
+- El INEI guarda en MySQL los distritos que consulta para reutilizarlos ante una caída.
+- Si el SENAMHI o el INEI faltan, el evento se devuelve igual sin esa parte; sin el sismo del IGP no hay evento que integrar.
 
 ## Tecnologías
 
