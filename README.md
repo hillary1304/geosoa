@@ -30,30 +30,38 @@ Por su ubicación en el Cinturón de Fuego del Pacífico y la geografía de los 
 
 ```mermaid
 flowchart LR
-    U[Usuario] --> FE[Dashboard web<br/>React 19 · TS · Vite]
+    U[Usuario] --> FE[Dashboard web<br/>React 19 · TypeScript · Vite]
     FE -- HTTP/JSON --> API[API REST<br/>Spring Boot]
     API --> ORQ[Servicio orquestador]
-    ORQ --> CACHE[(Caché y MySQL)]
-    ORQ --> AIGP[Adaptador IGP]
-    ORQ --> ASEN[Adaptador SENAMHI]
-    ORQ --> AINEI[Adaptador INEI]
+    subgraph RES[Capa de resiliencia: caché · reintentos · circuit breaker]
+        AIGP[Adaptador IGP]
+        ASEN[Adaptador SENAMHI]
+        AINEI[Adaptador INEI]
+    end
+    ORQ -- 1. sismo --> AIGP
+    ORQ -- 2. epicentro --> ASEN
+    ORQ -- 2. epicentro --> AINEI
     AIGP -- ArcGIS REST --> IGP[IGP<br/>Sismos]
     ASEN -- WFS --> SEN[SENAMHI<br/>Precipitación]
-    AINEI -- WFS/WMS --> INEI[INEI<br/>Límites y población]
+    AINEI -- WFS --> INEI[INEI<br/>Límites y población]
+    RES -. respaldo .-> DB[(MySQL)]
+    SYNC[Sincronización programada] -- sismos recientes --> DB
 ```
 
 1. El dashboard solicita información al backend.
-2. El orquestador coordina las consultas a los servicios públicos mediante adaptadores.
-3. Cada adaptador transforma la respuesta de su fuente a un formato común.
-4. El orquestador relaciona el sismo con el distrito, la precipitación y la población de la zona.
-5. Los datos consolidados se devuelven en JSON y se guardan en caché para tolerar caídas.
+2. El orquestador obtiene el sismo del IGP a través de su adaptador.
+3. Con las coordenadas del epicentro, consulta en paralelo al SENAMHI (precipitación) y al INEI (distrito del epicentro y distritos dentro del radio de afectación, con su población).
+4. Cada adaptador transforma la respuesta de su fuente al modelo de dominio común.
+5. El orquestador consolida el evento: sismo, distrito, precipitación, población y población expuesta, indicando qué fuentes faltaron y de dónde provino cada dato (en vivo, caché o MySQL).
+6. Cada consulta pasa por la capa de resiliencia: primero la caché, luego la fuente en vivo con reintentos y circuit breaker, y por último el respaldo en MySQL (IGP e INEI; el SENAMHI solo cuenta con la caché).
+7. Una tarea programada sincroniza periódicamente los sismos recientes del IGP en MySQL para servirlos ante una caída.
 
 ## Tecnologías
 
 | Componente | Tecnología |
 |---|---|
-| Backend | Java 21, Spring Boot 4.1, Maven |
-| Frontend | React 19, TypeScript, Vite, TanStack Query, Leaflet, Recharts |
+| Backend | Java 21, Spring Boot 4.1, Maven, Spring Data JPA, Flyway, Caffeine, Resilience4j |
+| Frontend | React 19, TypeScript 6, Vite 8, Lucide, Vitest, Testing Library |
 | Base de datos | MySQL 8.4 |
 | Servicios internos | REST sobre HTTP/HTTPS, JSON |
 | Servicio sísmico | ArcGIS REST (IGP) |
@@ -64,10 +72,29 @@ flowchart LR
 
 ```
 geosoa
-├── backend       API REST (Spring Boot)
-├── frontend      Dashboard web (React + Vite)
-├── docs          Documentación del proyecto
-└── compose.yaml  Base de datos MySQL
+├── backend                     API REST (Spring Boot)
+│   ├── src/main/java/com/geosoa/backend
+│   │   ├── adapter             Clientes de las fuentes externas
+│   │   │   ├── igp             Sismos vía ArcGIS REST (último sismo y reportados)
+│   │   │   ├── senamhi         Precipitación vía WFS
+│   │   │   └── inei            Distritos, límites y población vía WFS, con respaldo en MySQL
+│   │   ├── orchestrator        Integración del sismo con precipitación, distrito y población expuesta
+│   │   ├── resilience          Caché, reintentos, circuit breaker y sincronización de sismos
+│   │   ├── domain              Modelo común (Sismo, Distrito, Precipitacion, EventoIntegrado…)
+│   │   ├── persistence         Entidades y repositorios JPA (sismos y distritos)
+│   │   ├── api                 Manejo global de errores y formato de respuesta de error
+│   │   ├── config              Clientes HTTP, propiedades, CORS, resiliencia y tareas programadas
+│   │   └── shared              Excepciones compartidas
+│   └── src/main/resources
+│       └── db/migration        Migraciones de Flyway
+├── frontend                    Dashboard web (React + Vite)
+│   └── src
+│       ├── features/layout     Encabezado, filtros, mapa, indicadores, gráficos y tabla
+│       └── styles              Variables, temas y estilos globales
+├── api-client                  Colecciones de peticiones (IGP, SENAMHI, INEI, orquestación)
+├── scripts                     Configuración de MySQL en Windows
+├── docs                        Documentación del proyecto
+└── compose.yaml                Base de datos MySQL
 ```
 
 ## Ejecución local
