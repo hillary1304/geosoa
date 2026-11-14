@@ -13,10 +13,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.geosoa.backend.adapter.senamhi.CapaPrecipitacion;
+import com.geosoa.backend.adapter.senamhi.MeteorologiaClient;
 import com.geosoa.backend.adapter.senamhi.SenamhiAdapter;
+import com.geosoa.backend.domain.Dato;
 import com.geosoa.backend.domain.Fuente;
 import com.geosoa.backend.domain.Origen;
 import com.geosoa.backend.domain.Precipitacion;
+import com.geosoa.backend.domain.Procedencia;
 import com.geosoa.backend.shared.FuenteNoDisponibleException;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
@@ -61,6 +64,19 @@ class SenamhiResilienteTests {
 		assertThatThrownBy(() -> senamhi.precipitacion(-12.05, -77.03))
 			.isInstanceOfSatisfying(FuenteNoDisponibleException.class,
 					ex -> assertThat(ex.getFuente()).isEqualTo(Fuente.SENAMHI));
+	}
+
+	@Test
+	void usaElServicioRemotoCuandoEstaHabilitado() {
+		MeteorologiaClient remoto = mock(MeteorologiaClient.class);
+		FuenteResiliente fuente = new FuenteResiliente(Fuente.SENAMHI, Caffeine.newBuilder().build(),
+				CircuitBreaker.ofDefaults("senamhi-remoto"), Retry.of("senamhi-remoto", RetryConfig.custom().maxAttempts(1).build()));
+		Dato<Optional<Precipitacion>> respuesta = new Dato<>(Optional.of(ANUAL), Procedencia.enVivo());
+		when(remoto.precipitacion(-12.05, -77.03, CapaPrecipitacion.ANUAL)).thenReturn(respuesta);
+		SenamhiResiliente cliente = new SenamhiResiliente(adapter, fuente, remoto, true);
+
+		assertThat(cliente.precipitacion(-12.05, -77.03)).isEqualTo(respuesta);
+		verify(remoto).precipitacion(-12.05, -77.03, CapaPrecipitacion.ANUAL);
 	}
 
 }
