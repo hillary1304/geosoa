@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import com.geosoa.backend.adapter.inei.DistritoPoblado;
 import com.geosoa.backend.adapter.inei.IneiAdapter;
 import com.geosoa.backend.adapter.inei.IneiRespaldo;
+import com.geosoa.backend.adapter.inei.TerritorioClient;
 import com.geosoa.backend.domain.Dato;
 import com.geosoa.backend.domain.Distrito;
 import com.geosoa.backend.domain.Fuente;
@@ -89,6 +90,20 @@ class IneiResilienteTests {
 
 		assertThat(segunda.valor()).isEqualTo(enRadio);
 		assertThat(segunda.procedencia().origen()).isEqualTo(Origen.CACHE);
+	}
+
+	@Test
+	void consultaElServicioTerritorialCuandoEstaHabilitado() {
+		TerritorioClient remoto = mock(TerritorioClient.class);
+		FuenteResiliente fuente = new FuenteResiliente(Fuente.INEI, Caffeine.newBuilder().build(),
+				CircuitBreaker.ofDefaults("inei-remoto"), Retry.of("inei-remoto", RetryConfig.custom().maxAttempts(1).build()));
+		Dato<Optional<Distrito>> respuesta = new Dato<>(Optional.of(LIMA), ALMACENADA);
+		when(remoto.distrito(-12.05, -77.03)).thenReturn(respuesta);
+		IneiResiliente cliente = new IneiResiliente(adapter, fuente, respaldo, remoto, true);
+
+		assertThat(cliente.distrito(-12.05, -77.03)).isEqualTo(respuesta);
+		verify(remoto).distrito(-12.05, -77.03);
+		verify(adapter, never()).distrito(-12.05, -77.03);
 	}
 
 	private static FuenteNoDisponibleException caido() {
