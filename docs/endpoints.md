@@ -34,6 +34,18 @@ Base local: `http://localhost:8083`; la aplicación usa MySQL `geosoa_territorio
 
 Los resultados de datos siguen el sobre `valor` y `procedencia`. Un punto sin cobertura se distingue de una caída de INEI; los datos de respaldo quedan limitados a los distritos ya almacenados.
 
+## Sismos (`sismos-service`)
+
+Base local: `http://localhost:8081`; usa su instancia MySQL `geosoa_sismos` en el puerto 3307.
+
+- `GET /internal/v1/sismos?desde=2026-11-01&hasta=2026-11-14&magnitudMinima=4&departamento=ICA&pagina=0&tamano=50`
+- `GET /internal/v1/sismos/ultimo`
+- `GET /internal/v1/sismos/{codigo}`
+- `GET /internal/v1/sismos/indicadores`
+- `GET /actuator/health`
+
+La lista está paginada desde cero; `hasta` es inclusivo y `tamano` admite de 1 a 2000. La respuesta incluye `elementos`, `pagina`, `tamano`, `total` y `procedencia`. El detalle y el último sismo consultan el IGP y recurren al respaldo local cuando la fuente falla. Los indicadores identifican su cobertura como respaldo almacenado; no representan el total histórico del IGP.
+
 ## Monitoreo
 
 ### `GET /actuator/health`
