@@ -30,7 +30,36 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    networks:
+      - territorio-db
+  mysql-sismos:
+    image: mysql:8.4
+    container_name: geosoa-mysql-sismos
+    restart: "no"
+    environment:
+      MYSQL_DATABASE: geosoa_sismos
+      MYSQL_USER: sismos
+      MYSQL_PASSWORD: sismos-local
+      MYSQL_ROOT_PASSWORD: sismos-root-local
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-sismos-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - sismos-db
 
 volumes:
   mysql-data:
   mysql-territorio-data:
+  mysql-sismos-data:
+
+networks:
+  territorio-db:
+    internal: true
+  sismos-db:
+    internal: true
