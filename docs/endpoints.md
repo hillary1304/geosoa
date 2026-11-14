@@ -23,6 +23,17 @@ Si el punto no tiene cobertura, `valor` será `null`; eso no representa una caí
 
 Healthcheck: `GET http://localhost:8082/actuator/health`.
 
+## Territorio (`territorio-service`)
+
+Base local: `http://localhost:8083`; la aplicación usa MySQL `geosoa_territorio` por el puerto local 3308.
+
+- `GET /internal/v1/distritos/por-punto?latitud=-12.05&longitud=-77.03`
+- `GET /internal/v1/distritos/en-radio?latitud=-12.05&longitud=-77.03&radioKm=20`
+- `GET /internal/v1/distritos/150101/poblacion`
+- `GET /actuator/health`
+
+Los resultados de datos siguen el sobre `valor` y `procedencia`. Un punto sin cobertura se distingue de una caída de INEI; los datos de respaldo quedan limitados a los distritos ya almacenados.
+
 ## Monitoreo
 
 ### `GET /actuator/health`
