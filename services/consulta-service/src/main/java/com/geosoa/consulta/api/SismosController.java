@@ -5,22 +5,28 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.apache.camel.ProducerTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.geosoa.consulta.domain.Dato;
+import com.geosoa.consulta.domain.EventoIntegrado;
 import com.geosoa.consulta.domain.Sismo;
+import com.geosoa.consulta.evento.EventoRoute;
 import com.geosoa.consulta.ruta.LlamadasServiciosRoute;
 import com.geosoa.consulta.ruta.SismosRoute;
 
 @RestController
 @RequestMapping("/api")
 class SismosController {
+
+	private static final Pattern CODIGO = Pattern.compile("[A-Za-z0-9_-]{1,40}");
 
 	private final ProducerTemplate producer;
 
@@ -66,6 +72,16 @@ class SismosController {
 	@SuppressWarnings("unchecked")
 	Dato<Sismo> ultimo(@RequestAttribute(RequestIdFilter.ATRIBUTO) String requestId) {
 		return producer.requestBodyAndHeaders(SismosRoute.ULTIMO, null, encabezados(requestId), Dato.class);
+	}
+
+	@GetMapping("/sismos/{codigo}/evento")
+	EventoIntegrado evento(@PathVariable String codigo, @RequestAttribute(RequestIdFilter.ATRIBUTO) String requestId) {
+		if (!CODIGO.matcher(codigo).matches()) {
+			throw new SolicitudInvalidaException(List.of("codigo: solo letras, números, guion o guion bajo (máx. 40)"));
+		}
+		Map<String, Object> encabezados = encabezados(requestId);
+		encabezados.put(EventoRoute.CODIGO, codigo);
+		return producer.requestBodyAndHeaders(EventoRoute.CONSULTAR, null, encabezados, EventoIntegrado.class);
 	}
 
 	@GetMapping("/indicadores")
