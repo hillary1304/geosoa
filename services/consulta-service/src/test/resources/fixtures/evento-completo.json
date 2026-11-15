@@ -1,0 +1,25 @@
+{
+  "sismo": {
+    "codigo": "2026-0512",
+    "fechaHora": "2026-10-01T08:15:00-05:00",
+    "latitud": -12.05,
+    "longitud": -77.03,
+    "profundidadKm": 30.0,
+    "magnitud": 6.0,
+    "intensidad": "IV",
+    "referencia": "10 km al O de Lima",
+    "departamento": "LIMA",
+    "sentido": true
+  },
+  "distrito": { "ubigeo": "150101", "departamento": "LIMA", "provincia": "LIMA", "nombre": "LIMA" },
+  "precipitacion": { "capa": "ANUAL", "minimoMm": 10.0, "maximoMm": 15.0 },
+  "poblacion": { "ubigeo": "150101", "total": 268352, "densidadHabKm2": 12253.5 },
+  "radioAfectacionKm": 95.4,
+  "poblacionExpuesta": 719612,
+  "fuentesFaltantes": [],
+  "procedencias": {
+    "IGP": { "origen": "db", "actualizadoEn": "2026-10-06T12:00:00Z" },
+    "SENAMHI": { "origen": "cache", "actualizadoEn": "2026-10-07T15:00:00Z" },
+    "INEI": { "origen": "live", "actualizadoEn": "2026-10-07T15:00:00Z" }
+  }
+}

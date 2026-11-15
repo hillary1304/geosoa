@@ -1,0 +1,7 @@
+{
+  "status": 503,
+  "error": "Service Unavailable",
+  "mensaje": "El servicio de sismos no está disponible",
+  "ruta": "/api/sismos/ultimo",
+  "detalles": []
+}
