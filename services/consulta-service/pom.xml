@@ -54,6 +54,16 @@
 		</dependency>
 	</dependencies>
 	<build>
+		<testResources>
+			<testResource>
+				<directory>src/test/resources</directory>
+			</testResource>
+			<!-- Los ejemplos publicados del contrato son los mismos fixtures que validan las pruebas. -->
+			<testResource>
+				<directory>${project.basedir}/../../contracts/consulta-service/ejemplos</directory>
+				<targetPath>fixtures</targetPath>
+			</testResource>
+		</testResources>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
