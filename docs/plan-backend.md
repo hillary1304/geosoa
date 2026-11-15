@@ -112,10 +112,11 @@ com.geosoa.backend
 
 **Objetivo:** exponer la API para el dashboard y cerrar la calidad del backend.
 
-- [ ] Controladores `GET`: sismos (listado y filtros), detalle integrado, último sismo, indicadores y estado de las fuentes.
-- [ ] Validación de parámetros y paginación.
-- [ ] Documentación OpenAPI con springdoc y registro en [endpoints.md](endpoints.md).
-- [ ] Pruebas de integración de los controladores.
-- [ ] Empaquetado `jar` y verificación con `./mvnw verify`.
+- [x] Controladores `GET` en `consulta-service`: sismos (listado y filtros), detalle integrado, último sismo e indicadores.
+- [ ] Estado de las fuentes (`/api/fuentes/estado`): pendiente de `GET /internal/v1/estado-fuente` en cada servicio de dominio.
+- [x] Validación de parámetros y paginación.
+- [x] Contrato OpenAPI y ejemplos versionados en `contracts/consulta-service`, con registro en [endpoints.md](endpoints.md).
+- [x] Pruebas de integración de los controladores.
+- [x] Empaquetado `jar` y verificación con `mvn verify` en `consulta-service`.
 
 **Entregable:** API documentada, probada y lista para el frontend.

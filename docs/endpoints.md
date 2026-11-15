@@ -4,6 +4,22 @@ URL base local: `http://localhost:8080`
 
 Durante la migración, `meteorologia-service` escucha en `http://localhost:8082` y `consulta-service` usa `http://localhost:8084` mientras conviva con el backend monolítico en 8080. La distribución completa está en [puertos-locales.md](puertos-locales.md).
 
+## Consulta (`consulta-service`) – API pública
+
+Base local: `http://localhost:8084`. Es la API que consume el dashboard; coordina por HTTP a sismos, meteorología y territorio. El contrato completo está en [contracts/consulta-service/openapi.yaml](../contracts/consulta-service/openapi.yaml) y sus ejemplos en [contracts/consulta-service/ejemplos](../contracts/consulta-service/ejemplos), validados por las pruebas del servicio.
+
+- `GET /api/sismos?desde=2026-11-01&hasta=2026-11-14&magnitudMinima=4&departamento=ICA&pagina=0&tamano=50`
+- `GET /api/sismos/ultimo`
+- `GET /api/sismos/{codigo}/evento`
+- `GET /api/indicadores`
+- `GET /actuator/health`
+
+La lista responde `items`, `pagina`, `tamano`, `hayMas`, `total` y `procedencia`; `total` es `null` si la dependencia no lo informa. El último sismo responde `valor` y `procedencia`, con `valor: null` si aún no hay sismos. Las fechas de los sismos se presentan con offset en hora de Lima.
+
+El evento integrado obtiene el sismo y consulta en paralelo la precipitación del epicentro, su distrito y los distritos dentro del radio de afectación. Si falla meteorología o territorio, responde `200` con el evento parcial y la fuente en `fuentesFaltantes`; si `sismos-service` no responde, `503`; si el sismo no existe, `404`. `poblacionExpuesta` es una estimación del método actual, no un conteo de personas afectadas.
+
+Cada respuesta incluye `X-Request-Id`, que se propaga a los servicios de dominio. Consulta no reintenta: cada servicio administra sus reintentos. Pendientes: `GET /api/fuentes/estado`, que espera `GET /internal/v1/estado-fuente` en cada servicio de dominio, y los filtros de indicadores, que el contrato interno de sismos aún no ofrece.
+
 ## Meteorología (`meteorologia-service`)
 
 ### `GET http://localhost:8082/internal/v1/precipitacion?latitud=-12.05&longitud=-77.04&capa=ANUAL`
