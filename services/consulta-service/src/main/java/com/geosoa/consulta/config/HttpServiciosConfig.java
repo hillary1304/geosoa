@@ -1,5 +1,6 @@
 package com.geosoa.consulta.config;
 
+import org.apache.camel.component.http.HttpClientConfigurer;
 import org.apache.camel.component.http.HttpComponent;
 import org.apache.camel.spi.ComponentCustomizer;
 import org.springframework.context.annotation.Bean;
@@ -15,9 +16,13 @@ class HttpServiciosConfig {
 			http.setConnectTimeout((int) servicios.connectTimeout().toMillis());
 			http.setResponseTimeout((int) servicios.readTimeout().toMillis());
 			http.setSoTimeout((int) servicios.readTimeout().toMillis());
-			// HttpClient reintenta los 503 por defecto; cada servicio ya administra sus propios reintentos.
-			http.setAutomaticRetriesDisabled(true);
 		});
+	}
+
+	// HttpClient reintenta los 503 por defecto; cada servicio ya administra sus propios reintentos.
+	@Bean
+	HttpClientConfigurer sinReintentos() {
+		return builder -> builder.disableAutomaticRetries();
 	}
 
 }

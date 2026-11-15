@@ -44,7 +44,7 @@ public class LlamadasServiciosRoute extends RouteBuilder {
 			case METEOROLOGIA -> servicios.meteorologiaUrl().toString();
 			case TERRITORIO -> servicios.territorioUrl().toString();
 		};
-		return url.replaceAll("/+$", "") + "/internal/v1";
+		return url.replaceAll("/+$", "") + "/internal/v1?httpClientConfigurer=#sinReintentos";
 	}
 
 	static RuntimeException traducir(Servicio servicio, Exception error) {
