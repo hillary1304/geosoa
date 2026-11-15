@@ -204,6 +204,66 @@ class EventoApiTests {
 	}
 
 	@Test
+	void unTimeoutDeMeteorologiaDejaElEventoParcial() throws Exception {
+		METEOROLOGIA.demorar(PRECIPITACION, 1500, dato(LLUVIA, EN_VIVO));
+		TERRITORIO.responder(POR_PUNTO, 200, dato(LIMA, EN_VIVO));
+		TERRITORIO.responder(EN_RADIO, 200, dato(enRadio(poblado(LIMA, HAB_LIMA)), EN_VIVO));
+
+		HttpResponse<String> respuesta = evento(null);
+
+		assertThat(respuesta.statusCode()).isEqualTo(200);
+		JsonNode evento = json.readTree(respuesta.body());
+		assertThat(evento.get("precipitacion").isNull()).isTrue();
+		assertThat(textos(evento.get("fuentesFaltantes"))).containsExactly("SENAMHI");
+		assertThat(evento.get("procedencias").propertyNames()).containsExactlyInAnyOrder("IGP", "INEI");
+	}
+
+	@Test
+	void unTimeoutDeTerritorioDejaElEventoParcial() throws Exception {
+		METEOROLOGIA.responder(PRECIPITACION, 200, dato(LLUVIA, EN_VIVO));
+		TERRITORIO.demorar(POR_PUNTO, 1500, dato(LIMA, EN_VIVO));
+		TERRITORIO.demorar(EN_RADIO, 1500, dato(enRadio(poblado(LIMA, HAB_LIMA)), EN_VIVO));
+
+		HttpResponse<String> respuesta = evento(null);
+
+		assertThat(respuesta.statusCode()).isEqualTo(200);
+		JsonNode evento = json.readTree(respuesta.body());
+		assertThat(evento.get("distrito").isNull()).isTrue();
+		assertThat(evento.get("poblacionExpuesta").isNull()).isTrue();
+		assertThat(evento.at("/precipitacion/capa").asString()).isEqualTo("ANUAL");
+		assertThat(textos(evento.get("fuentesFaltantes"))).containsExactly("INEI");
+		assertThat(evento.get("procedencias").propertyNames()).containsExactlyInAnyOrder("IGP", "SENAMHI");
+	}
+
+	@Test
+	void sinCoberturaDelSenamhiNoMarcaLaFuenteComoCaida() throws Exception {
+		METEOROLOGIA.responder(PRECIPITACION, 200, dato("null", EN_VIVO));
+		TERRITORIO.responder(POR_PUNTO, 200, dato(LIMA, EN_VIVO));
+		TERRITORIO.responder(EN_RADIO, 200, dato(enRadio(poblado(LIMA, HAB_LIMA)), EN_VIVO));
+
+		JsonNode evento = json.readTree(evento(null).body());
+
+		assertThat(evento.get("precipitacion").isNull()).isTrue();
+		assertThat(evento.get("fuentesFaltantes")).isEmpty();
+		assertThat(evento.at("/procedencias/SENAMHI/origen").asString()).isEqualTo("live");
+	}
+
+	@Test
+	void laPoblacionDesconocidaQuedaNullYNoCero() throws Exception {
+		METEOROLOGIA.responder(PRECIPITACION, 200, dato(LLUVIA, EN_VIVO));
+		TERRITORIO.responder(POR_PUNTO, 200, dato(LIMA, EN_VIVO));
+		TERRITORIO.responder(EN_RADIO, 200, dato(enRadio(poblado(LIMA, "null"), poblado(CALLAO, HAB_CALLAO)), EN_VIVO));
+		TERRITORIO.responder(POBLACION_LIMA, 200, dato("null", EN_VIVO));
+
+		JsonNode evento = json.readTree(evento(null).body());
+
+		assertThat(evento.get("poblacion").isNull()).isTrue();
+		assertThat(evento.get("poblacionExpuesta").isNull()).isTrue();
+		assertThat(evento.get("fuentesFaltantes")).isEmpty();
+		assertThat(TERRITORIO.recibidas()).extracting(ServicioSimulado.Solicitud::ruta).contains(POBLACION_LIMA);
+	}
+
+	@Test
 	void consultaMeteorologiaYTerritorioEnParalelo() throws Exception {
 		METEOROLOGIA.demorar(PRECIPITACION, 600, dato(LLUVIA, EN_VIVO));
 		TERRITORIO.demorar(POR_PUNTO, 600, dato(LIMA, EN_VIVO));
