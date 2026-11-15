@@ -158,6 +158,7 @@ class SismosApiTests {
 		assertThat(respuesta.statusCode()).isEqualTo(503);
 		assertThat(json.readTree(respuesta.body()).get("mensaje").asString())
 			.isEqualTo("El servicio de sismos no está disponible");
+		assertThat(SISMOS.recibidas()).as("consulta no reintenta").hasSize(1);
 	}
 
 	@Test
