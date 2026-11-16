@@ -19,9 +19,9 @@
   --accent-warning: #f59e0b;       /* Alerta intermedia */
 
   /* Seismic Depths Colors */
-  --depth-shallow: #ef4444;       /* < 60 km - Superficial */
-  --depth-intermediate: #f59e0b;  /* 60-300 km - Intermedio */
-  --depth-deep: #06b6d4;          /* > 300 km - Profundo */
+  --depth-shallow: #f87171;       /* < 60 km - Superficial */
+  --depth-intermediate: #fbbf24;  /* 60-300 km - Intermedio */
+  --depth-deep: #22c55e;          /* > 300 km - Profundo */
 
   /* Spacing and Geometry */
   --header-height: 72px;
