@@ -1,0 +1,7 @@
+{
+  "status": 400,
+  "error": "Bad Request",
+  "mensaje": "Parámetros inválidos",
+  "ruta": "/api/sismos",
+  "detalles": ["pagina: debe ser mayor o igual a 0", "tamano: debe estar entre 1 y 2000"]
+}

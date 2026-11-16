@@ -1,0 +1,7 @@
+{
+  "status": 404,
+  "error": "Not Found",
+  "mensaje": "Sismo no encontrado",
+  "ruta": "/api/sismos/2026-9999/evento",
+  "detalles": []
+}

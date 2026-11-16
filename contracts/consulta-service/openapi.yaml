@@ -1,0 +1,311 @@
+openapi: 3.1.0
+info:
+  title: GeoSOA – API pública de consulta
+  version: 1.0.0
+  description: |
+    API que consume el dashboard. `consulta-service` coordina por HTTP a `sismos-service`,
+    `meteorologia-service` y `territorio-service`; no lee bases de datos ni consulta IGP, SENAMHI o INEI
+    directamente.
+
+    Reglas comunes:
+    - Las fechas de los sismos llevan offset y se presentan en hora de Lima (`America/Lima`, `-05:00`).
+    - `procedencia.origen` indica si el dato salió en vivo (`live`), de caché (`cache`) o del respaldo
+      almacenado (`db`) del servicio de dominio.
+    - Un valor `null` por falta de cobertura geográfica no es una caída de la fuente.
+    - La población desconocida es `null`, nunca `0`.
+    - Toda respuesta devuelve `X-Request-Id`; si el cliente envía uno válido, se conserva y se propaga
+      a los servicios de dominio.
+
+    Pendiente: `GET /api/fuentes/estado` se publicará cuando cada servicio de dominio exponga
+    `GET /internal/v1/estado-fuente`. Los indicadores aún no aceptan filtros porque el contrato
+    interno de sismos no los ofrece.
+servers:
+  - url: http://localhost:8084
+    description: Local, mientras convive con el backend monolítico en 8080
+paths:
+  /api/sismos:
+    get:
+      summary: Lista paginada de sismos
+      operationId: listarSismos
+      parameters:
+        - name: desde
+          in: query
+          description: Fecha inicial (inclusiva), en hora de Lima.
+          schema: { type: string, format: date }
+          example: '2026-11-01'
+        - name: hasta
+          in: query
+          description: Fecha final (inclusiva). No puede ser anterior a `desde`.
+          schema: { type: string, format: date }
+          example: '2026-11-14'
+        - name: magnitudMinima
+          in: query
+          schema: { type: number, minimum: 0 }
+          example: 4
+        - name: departamento
+          in: query
+          schema: { type: string }
+          example: ICA
+        - name: pagina
+          in: query
+          description: Página desde cero.
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: tamano
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 2000, default: 50 }
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Página de sismos.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/RequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ListaSismos' }
+              examples:
+                pagina:
+                  externalValue: ejemplos/lista-sismos.json
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '503': { $ref: '#/components/responses/NoDisponible' }
+  /api/sismos/ultimo:
+    get:
+      summary: Último sismo disponible
+      operationId: ultimoSismo
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Último sismo. `valor` es `null` si todavía no hay sismos disponibles.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/RequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DatoSismo' }
+              examples:
+                ultimo:
+                  externalValue: ejemplos/ultimo-sismo.json
+        '503': { $ref: '#/components/responses/NoDisponible' }
+  /api/sismos/{codigo}/evento:
+    get:
+      summary: Evento integrado de un sismo
+      description: |
+        Obtiene el sismo y compone en paralelo su contexto meteorológico y territorial.
+        Si falla meteorología o territorio, responde `200` con el evento parcial y lista la fuente en
+        `fuentesFaltantes`. Si `sismos-service` no responde, responde `503`.
+      operationId: consultarEvento
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema: { type: string, pattern: '^[A-Za-z0-9_-]{1,40}$' }
+          example: 2026-0512
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Evento completo o parcial.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/RequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EventoIntegrado' }
+              examples:
+                completo:
+                  externalValue: ejemplos/evento-completo.json
+                parcial:
+                  externalValue: ejemplos/evento-parcial.json
+        '400': { $ref: '#/components/responses/SolicitudInvalida' }
+        '404':
+          description: El sismo no existe.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                noEncontrado:
+                  externalValue: ejemplos/error-404.json
+        '503': { $ref: '#/components/responses/NoDisponible' }
+  /api/indicadores:
+    get:
+      summary: Indicadores de los sismos almacenados
+      operationId: indicadores
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Indicadores con su cobertura explícita; no equivalen al histórico total del IGP.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/RequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Indicadores' }
+              examples:
+                indicadores:
+                  externalValue: ejemplos/indicadores.json
+        '503': { $ref: '#/components/responses/NoDisponible' }
+  /actuator/health:
+    get:
+      summary: Estado del proceso consulta-service
+      description: Solo indica que el proceso está arriba; no informa el estado de las fuentes externas.
+      operationId: health
+      responses:
+        '200':
+          description: Proceso disponible.
+components:
+  parameters:
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: Identificador de la solicitud. Si falta o no es válido, se genera uno.
+      schema: { type: string, pattern: '^[A-Za-z0-9._-]{1,64}$' }
+  headers:
+    RequestId:
+      description: Identificador usado para esta solicitud y propagado a los servicios de dominio.
+      schema: { type: string }
+  responses:
+    SolicitudInvalida:
+      description: Parámetro con formato inválido o fuera de rango.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            validacion:
+              externalValue: ejemplos/error-400.json
+    NoDisponible:
+      description: '`sismos-service` no respondió, devolvió un error o superó el plazo.'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            sismosCaido:
+              externalValue: ejemplos/error-503.json
+  schemas:
+    Origen:
+      type: string
+      enum: [live, cache, db]
+    Fuente:
+      type: string
+      enum: [IGP, SENAMHI, INEI]
+    Procedencia:
+      type: object
+      required: [origen, actualizadoEn]
+      properties:
+        origen: { $ref: '#/components/schemas/Origen' }
+        actualizadoEn: { type: [string, 'null'], format: date-time }
+    Sismo:
+      type: object
+      required: [codigo, fechaHora, latitud, longitud, profundidadKm, magnitud, sentido]
+      properties:
+        codigo: { type: string }
+        fechaHora:
+          type: string
+          format: date-time
+          description: Hora local de Lima con offset, por ejemplo `2026-10-01T08:15:00-05:00`.
+        latitud: { type: number }
+        longitud: { type: number }
+        profundidadKm: { type: number }
+        magnitud: { type: number }
+        intensidad: { type: [string, 'null'] }
+        referencia: { type: [string, 'null'] }
+        departamento: { type: [string, 'null'] }
+        sentido: { type: boolean }
+    ListaSismos:
+      type: object
+      required: [items, pagina, tamano, hayMas, total, procedencia]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Sismo' }
+        pagina: { type: integer }
+        tamano: { type: integer }
+        hayMas:
+          type: boolean
+          description: Si hay `total`, se calcula con él; si no, indica que la página vino llena.
+        total:
+          type: [integer, 'null']
+          description: Total de sismos que cumplen los filtros; `null` si la dependencia no lo informa.
+        procedencia: { $ref: '#/components/schemas/Procedencia' }
+    DatoSismo:
+      type: object
+      required: [valor, procedencia]
+      properties:
+        valor:
+          oneOf:
+            - $ref: '#/components/schemas/Sismo'
+            - type: 'null'
+        procedencia: { $ref: '#/components/schemas/Procedencia' }
+    Distrito:
+      type: object
+      properties:
+        ubigeo: { type: string }
+        departamento: { type: string }
+        provincia: { type: string }
+        nombre: { type: string }
+    Poblacion:
+      type: object
+      properties:
+        ubigeo: { type: string }
+        total: { type: integer }
+        densidadHabKm2: { type: [number, 'null'] }
+    Precipitacion:
+      type: object
+      properties:
+        capa: { type: string }
+        minimoMm: { type: number }
+        maximoMm: { type: [number, 'null'] }
+    EventoIntegrado:
+      type: object
+      required: [sismo, radioAfectacionKm, fuentesFaltantes, procedencias]
+      properties:
+        sismo: { $ref: '#/components/schemas/Sismo' }
+        distrito:
+          description: Distrito del epicentro; `null` sin cobertura (por ejemplo, en el mar) o si faltó INEI.
+          oneOf:
+            - $ref: '#/components/schemas/Distrito'
+            - type: 'null'
+        precipitacion:
+          description: Precipitación en el epicentro; `null` sin cobertura o si faltó SENAMHI.
+          oneOf:
+            - $ref: '#/components/schemas/Precipitacion'
+            - type: 'null'
+        poblacion:
+          description: Población del distrito del epicentro; `null` si es desconocida.
+          oneOf:
+            - $ref: '#/components/schemas/Poblacion'
+            - type: 'null'
+        radioAfectacionKm:
+          type: number
+          description: Radio estimado según magnitud y profundidad, acotado entre 5 y 300 km.
+        poblacionExpuesta:
+          type: [integer, 'null']
+          description: |
+            Estimación del método actual: suma la población de los distritos dentro del radio.
+            No es un conteo confirmado de personas afectadas. `null` si falta algún dato.
+        fuentesFaltantes:
+          type: array
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/Fuente' }
+          description: Fuentes que no respondieron; vacío si el evento está completo.
+        procedencias:
+          type: object
+          description: Procedencia de cada fuente que respondió; las faltantes no aparecen.
+          propertyNames: { $ref: '#/components/schemas/Fuente' }
+          additionalProperties: { $ref: '#/components/schemas/Procedencia' }
+    Indicadores:
+      type: object
+      properties:
+        totalAlmacenado: { type: [integer, 'null'] }
+        magnitudMaximaAlmacenada: { type: [number, 'null'] }
+        cobertura: { type: string }
+    Error:
+      type: object
+      required: [timestamp, status, error, mensaje, ruta, detalles]
+      properties:
+        timestamp: { type: string, format: date-time }
+        status: { type: integer }
+        error: { type: string }
+        mensaje: { type: string }
+        ruta: { type: string }
+        detalles:
+          type: array
+          items: { type: string }
+          description: Parámetros inválidos en los errores `400` de validación.
