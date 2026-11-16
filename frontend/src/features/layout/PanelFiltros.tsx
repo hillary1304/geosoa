@@ -1,19 +1,54 @@
 import { Filter, RotateCcw, Calendar } from 'lucide-react'
+import { DEPARTAMENTOS } from '../../lib/filtros'
+import type { Filtros, Periodo, ProfundidadFiltro } from '../../lib/filtros'
 
-export function PanelFiltros() {
+interface Props {
+  filtros: Filtros
+  onCambiar: (cambios: Partial<Filtros>) => void
+  onRestablecer: () => void
+}
+
+const PROFUNDIDADES: { valor: ProfundidadFiltro; etiqueta: string }[] = [
+  { valor: 'todas', etiqueta: 'Todas' },
+  { valor: 'superficial', etiqueta: 'Superficial (<60km)' },
+  { valor: 'intermedio', etiqueta: 'Intermedio' },
+  { valor: 'profundo', etiqueta: 'Profundo (>300km)' },
+]
+
+const PERIODOS: { valor: Periodo; etiqueta: string }[] = [
+  { valor: 'historico', etiqueta: 'Histórico' },
+  { valor: '24h', etiqueta: '24 Horas' },
+  { valor: '7d', etiqueta: '7 Días' },
+  { valor: '30d', etiqueta: '30 Días' },
+]
+
+export function PanelFiltros({ filtros, onCambiar, onRestablecer }: Props) {
+  const activos = [
+    filtros.busqueda.trim() !== '',
+    filtros.magnitudMinima > 0,
+    filtros.profundidad !== 'todas',
+    filtros.departamento !== '',
+    filtros.periodo !== 'historico',
+  ].filter(Boolean).length
+
   return (
     <aside className="glass-panel filters-sidebar" aria-label="Panel de filtros de consulta">
       <div className="sidebar-title">
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
           <Filter size={16} /> Filtros y Búsqueda
         </span>
-        <button className="reset-filter-btn" type="button" title="Restablecer todos los filtros">
+        <button
+          className="reset-filter-btn"
+          type="button"
+          title="Restablecer todos los filtros"
+          onClick={onRestablecer}
+        >
           <RotateCcw size={12} style={{ display: 'inline', marginRight: '3px' }} />
           Restablecer
         </button>
       </div>
 
-      {/* Búsqueda por texto */}
+      {/* Búsqueda por referencia o código. Se aplica en el navegador. */}
       <div className="filter-group">
         <label className="filter-label" htmlFor="filter-search">
           Buscar Referencia o Código
@@ -22,19 +57,19 @@ export function PanelFiltros() {
           type="text"
           id="filter-search"
           className="input-styled"
-          placeholder="Ej. Oxapampa, Lima, 2026-716..."
-          disabled
+          value={filtros.busqueda}
+          onChange={(evento) => onCambiar({ busqueda: evento.target.value })}
         />
       </div>
 
-      {/* Magnitud Mínima */}
+      {/* Magnitud mínima enviada a la API. */}
       <div className="filter-group">
-        <div className="filter-label">
+        <label className="filter-label" htmlFor="filter-mag">
           <span>Magnitud Mínima</span>
-          <span className="value-badge" style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>
-            ≥ 0.0
+          <span className="value-badge" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+            ≥ {filtros.magnitudMinima.toFixed(1)}
           </span>
-        </div>
+        </label>
         <input
           type="range"
           id="filter-mag"
@@ -42,11 +77,18 @@ export function PanelFiltros() {
           min="0"
           max="7"
           step="0.5"
-          defaultValue="0"
-          disabled
-          style={{ width: '100%', accentColor: 'var(--accent-primary)', cursor: 'not-allowed' }}
+          value={filtros.magnitudMinima}
+          onChange={(evento) => onCambiar({ magnitudMinima: Number(evento.target.value) })}
+          style={{ width: '100%', accentColor: 'var(--text-primary)' }}
         />
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: '0.68rem',
+            color: 'var(--text-muted)',
+          }}
+        >
           <span>0 (Todos)</span>
           <span>4.0</span>
           <span>5.0</span>
@@ -54,34 +96,44 @@ export function PanelFiltros() {
         </div>
       </div>
 
-      {/* Profundidad Epicentral */}
+      {/* La API no filtra por profundidad; se filtra en el navegador. */}
       <div className="filter-group">
         <label className="filter-label">Profundidad Epicentral</label>
         <div className="chips-group">
-          <button className="chip-btn active" type="button" disabled>Todas</button>
-          <button className="chip-btn" type="button" disabled style={{ color: 'var(--depth-shallow)' }}>
-            Superficial (&lt;60km)
-          </button>
-          <button className="chip-btn" type="button" disabled style={{ color: 'var(--depth-intermediate)' }}>
-            Intermedio
-          </button>
-          <button className="chip-btn" type="button" disabled style={{ color: 'var(--depth-deep)' }}>
-            Profundo (&gt;300km)
-          </button>
+          {PROFUNDIDADES.map((opcion) => (
+            <button
+              key={opcion.valor}
+              className={`chip-btn profundidad-${opcion.valor} ${filtros.profundidad === opcion.valor ? 'active' : ''}`}
+              type="button"
+              onClick={() => onCambiar({ profundidad: opcion.valor })}
+            >
+              {opcion.etiqueta}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Departamento */}
+      {/* Departamento enviado a la API. */}
       <div className="filter-group">
         <label className="filter-label" htmlFor="filter-dept">
           Departamento
         </label>
-        <select id="filter-dept" className="select-styled" disabled>
+        <select
+          id="filter-dept"
+          className="select-styled"
+          value={filtros.departamento}
+          onChange={(evento) => onCambiar({ departamento: evento.target.value })}
+        >
           <option value="">Todos los departamentos</option>
+          {DEPARTAMENTOS.map((departamento) => (
+            <option key={departamento} value={departamento}>
+              {departamento}
+            </option>
+          ))}
         </select>
       </div>
 
-      {/* Rango Temporal */}
+      {/* Período de tiempo convertido a la fecha "desde" de la API. */}
       <div className="filter-group">
         <label className="filter-label">
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -89,14 +141,19 @@ export function PanelFiltros() {
           </span>
         </label>
         <div className="chips-group">
-          <button className="chip-btn active" type="button" disabled>Histórico</button>
-          <button className="chip-btn" type="button" disabled>24 Horas</button>
-          <button className="chip-btn" type="button" disabled>7 Días</button>
-          <button className="chip-btn" type="button" disabled>30 Días</button>
+          {PERIODOS.map((opcion) => (
+            <button
+              key={opcion.valor}
+              className={`chip-btn ${filtros.periodo === opcion.valor ? 'active' : ''}`}
+              type="button"
+              onClick={() => onCambiar({ periodo: opcion.valor })}
+            >
+              {opcion.etiqueta}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Pie del panel: Estado del Módulo */}
       <div
         style={{
           marginTop: 'auto',
@@ -109,8 +166,8 @@ export function PanelFiltros() {
           gap: '0.45rem',
         }}
       >
-        <span className="pulse-dot warning"></span>
-        <span>Módulo de filtros base (sin datos)</span>
+        <span className={`pulse-dot ${activos > 0 ? 'warning' : ''}`}></span>
+        <span>{activos > 0 ? `${activos} filtro(s) activo(s)` : 'Sin filtros activos'}</span>
       </div>
     </aside>
   )

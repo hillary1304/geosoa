@@ -1,18 +1,11 @@
-import { Activity, Sun, Moon, Database } from 'lucide-react'
+import { Activity, Database } from 'lucide-react'
 
 interface EncabezadoProps {
-  theme: 'dark' | 'light'
-  onToggleTheme: () => void
   isMock: boolean
   onToggleMock: () => void
 }
 
-export function Encabezado({
-  theme,
-  onToggleTheme,
-  isMock,
-  onToggleMock,
-}: EncabezadoProps) {
+export function Encabezado({ isMock, onToggleMock }: EncabezadoProps) {
   return (
     <header className="navbar" role="banner">
       <div className="brand-section">
@@ -20,9 +13,7 @@ export function Encabezado({
           <Activity size={24} color="#ffffff" />
         </div>
         <div className="brand-text">
-          <h1>
-            GeoSOA <span className="brand-badge">SOA v1.0</span>
-          </h1>
+          <h1>GeoSOA</h1>
           <span className="brand-subtitle">
             Plataforma de Riesgos Naturales del Perú
           </span>
@@ -63,16 +54,6 @@ export function Encabezado({
         >
           <Database size={14} />
           <span>{isMock ? 'Modo Simulado' : 'API en Vivo'}</span>
-        </button>
-
-        <button
-          className="icon-btn"
-          onClick={onToggleTheme}
-          title={`Cambiar a modo ${theme === 'dark' ? 'claro' : 'oscuro'}`}
-          aria-label="Cambiar tema de color"
-          type="button"
-        >
-          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
       </div>
     </header>
